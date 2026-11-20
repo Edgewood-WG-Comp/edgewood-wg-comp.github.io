@@ -24,7 +24,7 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') + '<header><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Point person</div><h1>' + esc(d.app || C.NAME) + '</h1><div class="hsub">' + esc(sub || '') + '</div></header>';
   }
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
-  function footer() { return '<footer><a href="./">Volunteer signup</a>' + (S.code || S.token ? ' · <button class="link" data-act="out">Sign out</button>' : '') + '</footer>'; }
+  function footer() { return '<footer><a href="./">Volunteer signup</a>' + (S.code || S.token ? ' · <button class="link" data-act="out">Sign out</button>' : '') + ' · <button class="link" data-theme-toggle>Theme: ' + (window.sosTheme ? sosTheme.label() : 'Auto') + '</button><span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>'; }
 
   function renderSignIn() {
     var gid = (S.cfg && S.cfg.googleClientId) || C.GOOGLE_CLIENT_ID;

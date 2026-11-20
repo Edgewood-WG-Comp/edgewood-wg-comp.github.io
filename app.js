@@ -34,7 +34,9 @@
   }
   function footer() {
     var c = ((S.fam || S.cfg || {}).contact) || C.CONTACT;
-    return '<footer>Questions? <a href="mailto:' + esc(c) + '">' + esc(c) + '</a>' + (S.code ? ' · <button class="link" data-act="signout">Sign out</button>' : '') + '</footer>';
+    return '<footer>Questions? <a href="mailto:' + esc(c) + '">' + esc(c) + '</a>' + (S.code ? ' · <button class="link" data-act="signout">Sign out</button>' : '') +
+      ' · <button class="link" data-theme-toggle>Theme: ' + (window.sosTheme ? sosTheme.label() : 'Auto') + '</button>' +
+      '<span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>';
   }
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
 
