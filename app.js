@@ -119,7 +119,7 @@
       var dp = dayParts(x.date), act = x.status === 'Signed up' ? '<button class="sm ghost" data-act="' + (x.extraId ? 'xcancel' : 'cancel') + '" data-id="' + esc(x.extraId || x.signupId) + '">Cancel</button>' : '<span class="pill done">' + esc(x.status) + '</span>';
       var lead = '';
       if (x.lead) lead = '<div class="leadline">Point person: <b>' + esc(x.lead.name) + '</b>' + (x.lead.phone ? ' <a class="cbtn" href="tel:' + tel(x.lead.phone) + '">Call</a><a class="cbtn" href="' + smsHref([x.lead.phone], '') + '">Text</a>' : '<div class="whosub">' + esc(x.lead.opens || '') + '</div>') + '</div>';
-      return '<li><div><div class="who">' + esc(x.person) + ' · ' + esc(x.station) + '</div><div class="whosub">' + esc(dp.dow + ' ' + dp.md + ', ' + x.label) + '</div>' + lead + '</div>' + act + '</li>';
+      return '<li><div><div class="who">' + esc(x.person) + ' · ' + esc(x.station) + (x.post ? ' <span class="pill tbd">' + esc(x.post) + '</span>' : '') + '</div><div class="whosub">' + esc(dp.dow + ' ' + dp.md + ', ' + x.label) + '</div>' + lead + '</div>' + act + '</li>';
     }).join('') + '</ul></div>';
   }
   function tabs() {

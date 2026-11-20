@@ -73,12 +73,15 @@
   function personRow(p, kind) {
     var id = kind === 'x' ? p.extraId : p.signupId, k = kind === 'x' ? 'data-x' : 'data-s';
     var inOn = p.status === 'Checked in', nsOn = p.status === 'No-show';
-    return '<div class="person"><div><div class="who">' + esc(p.name) + (p.override ? ' <span class="pill tbd">override</span>' : '') + '</div><div class="whosub">' + esc([p.type, p.group, p.family, p.status !== 'Signed up' ? p.status : ''].filter(String).join(' · ')) + '</div></div><div class="acts">' +
+    var plist = kind !== 'x' && S.day && S.day.posts && S.curStation ? S.day.posts[S.curStation] : null;
+    var psel = plist ? '<select class="postsel" data-id="' + esc(p.signupId) + '"><option value="">Post…</option>' + plist.map(function (x) { return '<option' + (x === p.post ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' : '';
+    return '<div class="person"><div><div class="who">' + esc(p.name) + (p.override ? ' <span class="pill tbd">override</span>' : '') + (p.post ? ' <span class="pill done">' + esc(p.post) + '</span>' : '') + '</div><div class="whosub">' + esc([p.type, p.group, p.family, p.status !== 'Signed up' ? p.status : ''].filter(String).join(' · ')) + '</div>' + psel + '</div><div class="acts">' +
       '<button class="chk' + (inOn ? ' on' : '') + '" data-act="mark" ' + k + '="' + esc(id) + '" data-mark="' + (inOn ? 'undo' : 'in') + '">' + (inOn ? 'In ✓' : 'Check in') + '</button>' +
       '<button class="chk ns' + (nsOn ? ' on' : '') + '" data-act="mark" ' + k + '="' + esc(id) + '" data-mark="' + (nsOn ? 'undo' : 'noshow') + '">No-show</button>' +
       '<button class="chk ns" data-act="' + (kind === 'x' ? 'xcancel' : 'cancel') + '" ' + k + '="' + esc(id) + '">Remove</button></div></div>';
   }
   function cellPanel(s) {
+    S.curStation = s.station;
     var live = s.people.filter(function (p) { return p.status !== 'Cancelled'; });
     var html = '<div class="card" id="panel"><h2>' + esc(s.station) + ' · ' + esc(s.label) + ' · ' + s.filled + ' of ' + s.spots + (s.who !== 'Anyone' ? ' · ' + esc(s.who) : '') + '</h2>' +
       (live.length ? live.map(function (p) { return personRow(p, 's'); }).join('') : '<p class="muted">No one yet.</p>') +
@@ -87,6 +90,7 @@
     return html + '</div>';
   }
   function extraPanel() {
+    S.curStation = '';
     var x = S.day.extra; if (!x.length) return '';
     var shifts = S.day.shifts;
     return '<div class="card"><h2>Extra Help · ' + x.length + '</h2>' + x.map(function (p) {
@@ -153,7 +157,9 @@
     var byStation = {}; dayShifts.forEach(function (s) { (byStation[s.station] = byStation[s.station] || []).push(s); });
     Object.keys(byStation).sort().forEach(function (st) {
       var leads = u.leads.filter(function (l) { return l.station.toLowerCase() === st.toLowerCase(); });
-      html += '<div class="card"><h2>' + esc(st) + '</h2><div class="whosub">Point person: ' + (leads.length ? leads.map(function (l) { return esc(l.name + (l.day ? ' (' + l.day + ')' : '')); }).join(', ') : 'none yet') + ' · <button class="link" data-act="leadnew" data-st="' + esc(st) + '">+ point person</button></div>' +
+      var pl = (u.posts || {})[st] || [];
+      html += '<div class="card"><h2>' + esc(st) + '</h2><div class="whosub">Posts: ' + (pl.length ? pl.map(function (x) { return '<span class="pill tbd">' + esc(x) + ' <button class="link" data-act="postdel" data-st="' + esc(st) + '" data-post="' + esc(x) + '" title="Remove">×</button></span>'; }).join(' ') : 'none') +
+        ' · <button class="link" data-act="postadd" data-st="' + esc(st) + '">+ post</button></div><div class="whosub">Point person: ' + (leads.length ? leads.map(function (l) { return esc(l.name + (l.day ? ' (' + l.day + ')' : '')); }).join(', ') : 'none yet') + ' · <button class="link" data-act="leadnew" data-st="' + esc(st) + '">+ point person</button></div>' +
         byStation[st].sort(function (a, b) { return a.start < b.start ? -1 : 1; }).map(function (s) {
           if (S.edit === s.id) return '<div class="editrow" data-id="' + esc(s.id) + '"><div class="row"><div><label>Station</label><input class="e-st" value="' + esc(s.station) + '" list="stl"></div><div><label>Date</label><input class="e-dt" type="date" value="' + esc(s.date) + '"></div></div>' +
             '<div class="row"><div><label>Start</label><input class="e-s" type="time" value="' + esc(s.start) + '"></div><div><label>End</label><input class="e-e" type="time" value="' + esc(s.end) + '"></div><div><label>Spots</label><input class="e-sp" type="number" min="0" value="' + s.spots + '"></div></div>' +
@@ -199,6 +205,7 @@
 
   app.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.classList.contains('postsel')) { t.disabled = true; call({ action: 'setPost', signupId: t.getAttribute('data-id'), post: t.value }).then(function (r) { if (r.error) flash('err', r.error); loadDay(); }); return; }
     if (t.classList.contains('plc') && t.value) { var x = t.getAttribute('data-x'), sid = t.value; t.disabled = true;
       call({ action: 'adminPlace', extraId: x, shiftId: sid, overfill: true }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Placed.'); loadDay(); }); }
   });
@@ -253,6 +260,10 @@
         return r;
       }).then(function (r) { if (!r) return; flash(r.error ? 'err' : 'ok', r.error || ('Saved.' + (r.notified ? ' ' + r.notified + ' family email(s) sent about the new time.' : ''))); if (!r.error) S.edit = ''; loadSetup(); });
     }
+    else if (act === 'postadd') { var pn = prompt('New post for ' + b.getAttribute('data-st') + ' (e.g. Buses):'); if (!pn) return;
+      call({ action: 'adminPostAdd', station: b.getAttribute('data-st'), post: pn }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Post added.'); loadSetup(); }); }
+    else if (act === 'postdel') { if (!confirm('Remove the post "' + b.getAttribute('data-post') + '"? People already on it keep it until reassigned.')) return;
+      call({ action: 'adminPostDelete', station: b.getAttribute('data-st'), post: b.getAttribute('data-post') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Post removed.'); loadSetup(); }); }
     else if (act === 'leadnew') { S.ledit = 'new'; S.lstation = b.getAttribute('data-st') || ''; render(); var lc = document.getElementById('leadsCard'); if (lc) lc.scrollIntoView({ behavior: 'smooth' }); }
     else if (act === 'leadedit') { S.ledit = +b.getAttribute('data-row'); render(); }
     else if (act === 'leadcancel') { S.ledit = ''; render(); }

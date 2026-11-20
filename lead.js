@@ -35,12 +35,16 @@
       if (window.google && google.accounts) draw(); else { var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = draw; document.head.appendChild(sc); }
     }
   }
+  function postSel(p, station) {
+    var list = (S.data.posts || {})[station]; if (!list) return '';
+    return '<select class="postsel" data-id="' + esc(p.signupId) + '"><option value="">Post…</option>' + list.map(function (x) { return '<option' + (x === p.post ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + (p.post && list.indexOf(p.post) < 0 ? '<option selected>' + esc(p.post) + '</option>' : '') + '</select>';
+  }
   function people(slot) {
     if (!slot.people.length) return '<div class="muted" style="padding:6px 0">No one yet.</div>';
-    return slot.people.map(function (p) {
+    return slot.people.slice().sort(function (a, b) { return (a.post || '~') < (b.post || '~') ? -1 : (a.post || '~') > (b.post || '~') ? 1 : a.name < b.name ? -1 : 1; }).map(function (p) {
       var sub = [p.type, p.group, p.phone ? p.phone + (p.fromFamily ? ' (family)' : '') : 'no phone on file'].filter(String).join(' · ');
       var inOn = p.status === 'Checked in', nsOn = p.status === 'No-show';
-      return '<div class="person"><div><div class="who">' + esc(p.name) + '</div><div class="whosub">' + esc(sub) + '</div></div><div class="acts">' +
+      return '<div class="person"><div><div class="who">' + esc(p.name) + (p.post && !(S.data.posts || {})[slot.station] ? ' <span class="pill tbd">' + esc(p.post) + '</span>' : '') + '</div><div class="whosub">' + esc(sub) + '</div>' + postSel(p, slot.station) + '</div><div class="acts">' +
         (p.phone ? '<a class="cbtn" href="tel:' + tel(p.phone) + '">Call</a><a class="cbtn alt" href="' + smsHref([p.phone], S.body) + '">Text</a>' : '') +
         '<button class="chk' + (inOn ? ' on' : '') + '" data-act="mark" data-id="' + esc(p.signupId) + '" data-mark="' + (inOn ? 'undo' : 'in') + '">' + (inOn ? 'In ✓' : 'Check in') + '</button>' +
         '<button class="chk ns' + (nsOn ? ' on' : '') + '" data-act="mark" data-id="' + esc(p.signupId) + '" data-mark="' + (nsOn ? 'undo' : 'noshow') + '">No-show</button></div></div>';
@@ -63,7 +67,9 @@
     if (d.lead.all && names.length > 1) html += '<div class="card"><label for="stf">Station</label><select id="stf"><option value="">All stations</option>' + names.map(function (n) { return '<option' + (n === S.station ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>';
     names.filter(function (n) { return !S.station || n === S.station; }).forEach(function (n) {
       var slots = stations[n], dayPeople = [].concat.apply([], slots.map(function (s) { return s.people; }));
+      var byPost = {}; dayPeople.forEach(function (p) { if (p.post) (byPost[p.post] = byPost[p.post] || []).push(p); });
       html += '<div class="card"><h2>' + esc(n) + '</h2><div class="leadline">' + textBtn('Text everyone today', phonesOf(dayPeople)) + '</div>' +
+        Object.keys(byPost).sort().map(function (k) { return '<div class="leadline">' + textBtn('Text ' + k + ' today', phonesOf(byPost[k])) + '</div>'; }).join('') +
         '<div class="leadline">' + textBtn('Text everyone, all days', d.stationPhones[n] || []) + '</div>';
       slots.forEach(function (s) {
         var live = s.people.filter(function (p) { return p.status !== 'Cancelled'; }).length;
@@ -82,7 +88,10 @@
     });
   }
   app.addEventListener('input', function (e) { if (e.target.id === 'body') { S.body = e.target.value; Array.prototype.forEach.call(app.querySelectorAll('a.cbtn.alt'), function (a) { var m = a.getAttribute('href').match(/addresses=([^&]*)|^sms:([^?]*)/); var ph = (m && (m[1] || m[2]) || '').split(','); a.setAttribute('href', smsHref(ph, S.body)); }); } });
-  app.addEventListener('change', function (e) { if (e.target.id === 'stf') { S.station = e.target.value; render(); } });
+  app.addEventListener('change', function (e) {
+    if (e.target.id === 'stf') { S.station = e.target.value; render(); }
+    if (e.target.classList.contains('postsel')) { e.target.disabled = true; call({ action: 'setPost', leadCode: S.code, idToken: S.token, signupId: e.target.getAttribute('data-id'), post: e.target.value }).then(function (r) { if (r.error) S.msg = { kind: 'err', text: r.error }; load(); }); }
+  });
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b) return;
     var act = b.getAttribute('data-act'); S.msg = null;
