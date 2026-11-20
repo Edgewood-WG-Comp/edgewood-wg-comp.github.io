@@ -118,3 +118,7 @@ select.plc{margin-top:6px;font-size:13px;padding:6px 8px}
 .np.back{background:#F5B700;color:#2E1065}
 select.postsel{margin-top:6px;font-size:13px;padding:6px 8px;width:auto;min-width:150px}
 .adminpill.spot{background:#5EEAD4;color:#134E4A}
+button.adminpill{border:0;cursor:pointer;min-height:0}
+.adminpill.spottog{background:rgba(255,255,255,.16);color:#fff;border:1px dashed rgba(255,255,255,.6)}
+.adminpill.spottog.spot{background:#5EEAD4;color:#134E4A;border:1px solid #5EEAD4}
+html.dark button.adminpill{background:#F5B700;color:#2E1065}html.dark .adminpill.spottog{background:rgba(255,255,255,.12);color:#fff}html.dark .adminpill.spottog.spot{background:#5EEAD4;color:#134E4A}

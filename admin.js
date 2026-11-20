@@ -27,10 +27,9 @@
   function header() {
     var d = S.who || S.cfg || {};
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
-      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.role === 'Spotter' || S.spot ? ' <span class="adminpill spot">Spotter</span>' : ' <span class="adminpill">Admin</span>') : '') + '</h1>' +
+      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.role === 'Spotter' ? ' <span class="adminpill spot">Spotter</span>' : ' <span class="adminpill">Admin</span> <button class="adminpill spottog' + (S.spot ? ' spot' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter ' + (S.spot ? 'on' : 'off') + '</button>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
         [['grid', 'Day grid'], ['setup', 'Setup'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
-        (S.who.role !== 'Spotter' ? '<button class="np' + (S.spot ? ' on' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter mode: ' + (S.spot ? 'On' : 'Off') + '</button>' : '') +
         '<a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
@@ -189,7 +188,7 @@
     if (!S.who) return renderSignIn();
     var body = S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
     var ro = S.who.role === 'Spotter' || S.spot;
-    app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.role === 'Spotter' ? 'View only. Spotters see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Turn it off in the header to edit.') + '</div>' : '') + banner() + body + footer();
+    app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.role === 'Spotter' ? 'View only. Spotters see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Tap SPOTTER ON next to ADMIN to edit again.') + '</div>' : '') + banner() + body + footer();
     if (ro) Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
   }
 
