@@ -278,10 +278,10 @@
     else if (act === 'leademail') { b.disabled = true; call({ action: 'adminLeadEmail', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
     else if (act === 'leaddel') { if (!confirm('Remove ' + b.getAttribute('data-name') + ' as a point person?')) return; b.disabled = true;
       call({ action: 'adminLeadDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadSetup(); }); }
-    else if (act === 'spot') { S.spot = !S.spot; try { S.spot ? sessionStorage.setItem('sosSpotMode', '1') : sessionStorage.removeItem('sosSpotMode'); } catch (x) {} render(); }
+    else if (act === 'spot') { S.spot = !S.spot; try { sessionStorage.setItem('sosSpotMode', S.spot ? '1' : '0'); } catch (x) {} render(); }
     else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
   });
 
-  S.token = getS(TOK); S.spot = getS('sosSpotMode') === '1';
+  S.token = getS(TOK); S.spot = getS('sosSpotMode') !== '0';   // admins start in Spotter mode; tapping the pill turns it off for this tab
   call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (S.token) start(); else render(); });
 })();
