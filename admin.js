@@ -27,7 +27,7 @@
   function header() {
     var d = S.who || S.cfg || {};
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
-      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? ' <span class="adminpill">Admin</span>' : '') + '</h1>' +
+      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.role === 'Spotter' ? ' <span class="adminpill spot">Spotter</span>' : ' <span class="adminpill">Admin</span>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
         [['grid', 'Day grid'], ['setup', 'Setup'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
         '<a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
@@ -85,7 +85,7 @@
     var live = s.people.filter(function (p) { return p.status !== 'Cancelled'; });
     var html = '<div class="card" id="panel"><h2>' + esc(s.station) + ' · ' + esc(s.label) + ' · ' + s.filled + ' of ' + s.spots + (s.who !== 'Anyone' ? ' · ' + esc(s.who) : '') + '</h2>' +
       (live.length ? live.map(function (p) { return personRow(p, 's'); }).join('') : '<p class="muted">No one yet.</p>') +
-      '<label for="addq">Add someone (any restriction is overridden)</label><div class="row"><input id="addq" placeholder="Name or email" value="' + esc(S.addQ) + '"><button class="sm" style="flex:none" data-act="addsearch">Find</button></div>';
+      '<div class="w"><label for="addq">Add someone (any restriction is overridden)</label><div class="row"><input id="addq" placeholder="Name or email" value="' + esc(S.addQ) + '"><button class="sm" style="flex:none" data-act="addsearch">Find</button></div></div>';
     if (S.addHits) html += S.addHits.length ? S.addHits.map(function (p) { return '<div class="person"><div><div class="who">' + esc(p.name) + '</div><div class="whosub">' + esc([p.type, p.group, p.family].filter(String).join(' · ')) + '</div></div><div class="acts"><button class="chk" data-act="place" data-pid="' + esc(p.id) + '">Add to this spot</button></div></div>'; }).join('') : '<p class="muted">No one found.</p>';
     return html + '</div>';
   }
@@ -146,7 +146,7 @@
       '<button class="tab" data-act="newday"><div class="d1">Add</div><div class="d2">+ Day</div></button></div>';
     if (S.newday) html += '<div class="card"><h2>New day</h2><label for="nd">Date</label><input id="nd" type="date"><p class="muted">Then add its shifts below.</p><button class="sm" data-act="newdayok">Use this date</button></div>';
     // add shift(s)
-    html += '<div class="card"><h2>Add a shift' + (S.sdate ? ' · ' + esc(dayParts(S.sdate).dow + ' ' + dayParts(S.sdate).md) : '') + '</h2>' +
+    html += '<div class="card w"><h2>Add a shift' + (S.sdate ? ' · ' + esc(dayParts(S.sdate).dow + ' ' + dayParts(S.sdate).md) : '') + '</h2>' +
       '<label for="as">Station</label><input id="as" list="stl" placeholder="Pick one, or type a new station name"><datalist id="stl">' + u.stations.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' +
       '<div class="row"><div><label for="ast">Start</label><input id="ast" type="time" value="08:00"></div><div><label for="aen">End</label><input id="aen" type="time" value="11:00"></div><div><label for="asp">Spots</label><input id="asp" type="number" min="0" value="2"></div></div>' +
       '<div class="row"><div><label for="awh">Who can sign up</label><select id="awh">' + opt(WHO, 'Anyone') + '</select></div><div><label for="aco">Counts as</label><input id="aco" type="number" min="0" step="0.5" value="1"></div><div><label for="ass">Status</label><select id="ass">' + opt(STATUS, 'Draft') + '</select></div></div>' +
@@ -187,7 +187,8 @@
   function render() {
     if (!S.who) return renderSignIn();
     var body = S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
-    app.innerHTML = header() + banner() + body + footer();
+    app.innerHTML = header() + (S.who.role === 'Spotter' ? '<div class="banner info">View only. Spotters see everything but can\'t change anything.</div>' : '') + banner() + body + footer();
+    if (S.who.role === 'Spotter') Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
   }
 
   // ---------- loading

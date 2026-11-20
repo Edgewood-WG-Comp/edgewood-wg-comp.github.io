@@ -21,7 +21,7 @@
   }
   function header(sub) {
     var d = S.data || S.cfg || {};
-    return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') + '<header><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Point person</div><h1>' + esc(d.app || C.NAME) + (S.data && S.data.lead.all ? ' <a class="adminpill" href="admin.html">Admin</a>' : '') + '</h1><div class="hsub">' + esc(sub || '') + '</div></header>';
+    return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') + '<header><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Point person</div><h1>' + esc(d.app || C.NAME) + (S.data && S.data.lead.all ? ' <a class="adminpill' + (S.data.lead.viewOnly ? ' spot' : '') + '" href="admin.html">' + (S.data.lead.viewOnly ? 'Spotter' : 'Admin') + '</a>' : '') + '</h1><div class="hsub">' + esc(sub || '') + '</div></header>';
   }
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
   function footer() { return '<footer><a href="./">Volunteer signup</a>' + (S.code || S.token ? ' · <button class="link" data-act="out">Sign out</button>' : '') + ' · <button class="link" data-theme-toggle>Theme: ' + (window.sosTheme ? sosTheme.label() : 'Auto') + '</button><span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>'; }
@@ -44,7 +44,7 @@
     return slot.people.slice().sort(function (a, b) { return (a.post || '~') < (b.post || '~') ? -1 : (a.post || '~') > (b.post || '~') ? 1 : a.name < b.name ? -1 : 1; }).map(function (p) {
       var sub = [p.type, p.group, p.phone ? p.phone + (p.fromFamily ? ' (family)' : '') : 'no phone on file'].filter(String).join(' · ');
       var inOn = p.status === 'Checked in', nsOn = p.status === 'No-show';
-      return '<div class="person"><div><div class="who">' + esc(p.name) + (p.post && !(S.data.posts || {})[slot.station] ? ' <span class="pill tbd">' + esc(p.post) + '</span>' : '') + '</div><div class="whosub">' + esc(sub) + '</div>' + postSel(p, slot.station) + '</div><div class="acts">' +
+      return '<div class="person"><div><div class="who">' + esc(p.name) + (p.post && (S.data.lead.viewOnly || !(S.data.posts || {})[slot.station]) ? ' <span class="pill tbd">' + esc(p.post) + '</span>' : '') + '</div><div class="whosub">' + esc(sub) + '</div>' + postSel(p, slot.station) + '</div><div class="acts">' +
         (p.phone ? '<a class="cbtn" href="tel:' + tel(p.phone) + '">Call</a><a class="cbtn alt" href="' + smsHref([p.phone], S.body) + '">Text</a>' : '') +
         '<button class="chk' + (inOn ? ' on' : '') + '" data-act="mark" data-id="' + esc(p.signupId) + '" data-mark="' + (inOn ? 'undo' : 'in') + '">' + (inOn ? 'In ✓' : 'Check in') + '</button>' +
         '<button class="chk ns' + (nsOn ? ' on' : '') + '" data-act="mark" data-id="' + esc(p.signupId) + '" data-mark="' + (nsOn ? 'undo' : 'noshow') + '">No-show</button></div></div>';
@@ -61,7 +61,7 @@
     d.slots.forEach(function (s) { (stations[s.station] = stations[s.station] || []).push(s); });
     var names = Object.keys(stations).sort();
     if (S.body === null) S.body = 'Hi, this is ' + d.lead.name + ', point person for ' + (d.lead.all ? 'the ' + d.event : (d.lead.stations[0] || '').replace(/ \(.*/, '')) + '. ';
-    var html = header(d.lead.name + (d.lead.all ? ' · all stations (admin)' : ' · ' + d.lead.stations.join(', '))) + banner();
+    var html = header(d.lead.name + (d.lead.all ? ' · all stations' + (d.lead.viewOnly ? ' (view only)' : ' (admin)') : ' · ' + d.lead.stations.join(', '))) + banner();
     html += '<div class="card"><h2>Group text message</h2><textarea id="body">' + esc(S.body) + '</textarea><p class="muted" style="margin:6px 0 0">Group texts open your phone\'s messaging app with everyone in it. Everyone sees the numbers and replies go to the group. For private replies, text people one by one.</p></div>';
     html += '<div class="tabs">' + d.days.map(function (x) { var p = dayParts(x.date); return '<button class="tab' + (x.date === d.date ? ' on' : '') + '" data-act="day" data-date="' + x.date + '"><div class="d1">' + esc(p.dow) + '</div><div class="d2">' + esc(p.md) + '</div></button>'; }).join('') + '</div>';
     if (d.lead.all && names.length > 1) html += '<div class="card"><label for="stf">Station</label><select id="stf"><option value="">All stations</option>' + names.map(function (n) { return '<option' + (n === S.station ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('') + '</select></div>';
@@ -79,6 +79,7 @@
     });
     if (!names.length) html += '<div class="card"><p class="muted">No shifts for your station this day.</p></div>';
     app.innerHTML = html + footer();
+    if (d.lead.viewOnly) Array.prototype.forEach.call(app.querySelectorAll('.postsel, [data-act=mark]'), function (el) { el.remove(); });
   }
   function load(date) {
     return call({ action: 'lead', leadCode: S.code, idToken: S.token, date: date || S.date || '' }).then(function (r) {
