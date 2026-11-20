@@ -27,9 +27,10 @@
   function header() {
     var d = S.who || S.cfg || {};
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
-      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.role === 'Spotter' ? ' <span class="adminpill spot">Spotter</span>' : ' <span class="adminpill">Admin</span>') : '') + '</h1>' +
+      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.role === 'Spotter' || S.spot ? ' <span class="adminpill spot">Spotter</span>' : ' <span class="adminpill">Admin</span>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
         [['grid', 'Day grid'], ['setup', 'Setup'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+        (S.who.role !== 'Spotter' ? '<button class="np' + (S.spot ? ' on' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter mode: ' + (S.spot ? 'On' : 'Off') + '</button>' : '') +
         '<a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
@@ -187,8 +188,9 @@
   function render() {
     if (!S.who) return renderSignIn();
     var body = S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
-    app.innerHTML = header() + (S.who.role === 'Spotter' ? '<div class="banner info">View only. Spotters see everything but can\'t change anything.</div>' : '') + banner() + body + footer();
-    if (S.who.role === 'Spotter') Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
+    var ro = S.who.role === 'Spotter' || S.spot;
+    app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.role === 'Spotter' ? 'View only. Spotters see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Turn it off in the header to edit.') + '</div>' : '') + banner() + body + footer();
+    if (ro) Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
   }
 
   // ---------- loading
@@ -277,9 +279,10 @@
     else if (act === 'leademail') { b.disabled = true; call({ action: 'adminLeadEmail', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
     else if (act === 'leaddel') { if (!confirm('Remove ' + b.getAttribute('data-name') + ' as a point person?')) return; b.disabled = true;
       call({ action: 'adminLeadDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadSetup(); }); }
+    else if (act === 'spot') { S.spot = !S.spot; try { S.spot ? sessionStorage.setItem('sosSpotMode', '1') : sessionStorage.removeItem('sosSpotMode'); } catch (x) {} render(); }
     else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
   });
 
-  S.token = getS(TOK);
+  S.token = getS(TOK); S.spot = getS('sosSpotMode') === '1';
   call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (S.token) start(); else render(); });
 })();
