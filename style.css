@@ -1,0 +1,47 @@
+/* SOS Crew. Copyright (c) 2026 NE Prints & Design, LLC. */
+:root{--ink:#1E1B2E;--sub:#5B5670;--bg:#F3F1F8;--card:#fff;--brand:#2E1065;--brand2:#7C3AED;--accent:#14B8A6;--warn:#B45309;--bad:#B91C1C;--line:#E7E3F0;--r:16px}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:640px;margin:0 auto;padding-bottom:40px}
+header{background:linear-gradient(135deg,var(--brand),#4C1D95 60%,var(--brand2));color:#fff;padding:22px 18px 18px;border-radius:0 0 22px 22px}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#99F6E4}
+h1{font-size:28px;line-height:1.1;margin:8px 0 2px}
+.hsub{color:#DDD6FE;font-size:14px}
+.card{background:var(--card);border-radius:var(--r);padding:16px;margin:12px 14px;box-shadow:0 1px 2px rgba(30,27,46,.08)}
+.card h2{font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--sub);margin:0 0 10px}
+.banner{margin:12px 14px;padding:12px 14px;border-radius:12px;font-size:14px}
+.banner.info{background:#EDE9FE;color:#3B0764}.banner.warn{background:#FEF3C7;color:#78350F}.banner.ok{background:#CCFBF1;color:#134E4A}.banner.err{background:#FEE2E2;color:#7F1D1D}
+label{display:block;font-size:13px;font-weight:600;color:var(--sub);margin:10px 0 4px}
+input,select{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+button{font:600 15px system-ui,sans-serif;border:0;border-radius:12px;min-height:44px;padding:0 16px;cursor:pointer;background:var(--brand);color:#fff}
+button.ghost{background:#fff;color:var(--brand);border:1px solid #C4B5FD}
+button.sm{min-height:34px;padding:0 12px;font-size:14px;border-radius:99px}
+button.link{background:none;color:var(--brand2);padding:0;min-height:0;text-decoration:underline;font-weight:600}
+button:disabled{opacity:.45;cursor:default}
+.row{display:flex;gap:8px;align-items:center}.row>*{flex:1}
+.status-line{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+.status-line:first-of-type{border-top:0}
+.who{font-weight:600}.whosub{font-size:12px;color:var(--sub)}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
+.pill.done{background:#CCFBF1;color:#115E59}.pill.need{background:#FEF3C7;color:#92400E}.pill.tbd{background:#EDE9FE;color:#5B21B6}
+.mine li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);list-style:none}
+.mine ul{margin:0;padding:0}.mine li:first-child{border-top:0}
+.tabs{display:flex;gap:8px;margin:14px 14px 0;overflow-x:auto}
+.tab{flex:none;min-width:84px;background:#fff;color:var(--brand);border:1px solid #DDD6FE;border-radius:14px;padding:8px 12px;text-align:center}
+.tab.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tab .d1{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}.tab .d2{font-size:20px;font-weight:800}
+.block h3{margin:0 0 6px;font-size:18px}
+.st{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.st:first-of-type{border-top:0}
+.st .nm{font-weight:600}.st .meta{font-size:12px;color:var(--sub)}
+.st.full .nm{color:var(--sub)}
+.open{font-size:13px;font-weight:700;color:var(--accent)}.open.zero{color:var(--sub)}
+.yours{font-size:12px;color:#115E59;font-weight:700}
+.picker{margin-top:8px;padding:10px;background:#F5F3FF;border-radius:12px}
+.picker .row{flex-wrap:wrap}.picker button{flex:none}
+.muted{color:var(--sub);font-size:13px}
+.loading{text-align:center;color:var(--sub);margin-top:40px}
+footer{text-align:center;font-size:13px;color:var(--sub);margin:24px 14px}
+footer a{color:var(--brand2)}
+.sandbox{background:#F97316;color:#fff;text-align:center;font:700 12px system-ui;letter-spacing:.1em;padding:4px}
+details summary{cursor:pointer;font-weight:600;color:var(--brand)}
