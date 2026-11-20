@@ -27,7 +27,7 @@
   function header() {
     var d = S.who || S.cfg || {};
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
-      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + '</h1>' +
+      '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? ' <span class="adminpill">Admin</span>' : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
         [['grid', 'Day grid'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
         '<a class="np" href="lead.html">Point-person view</a></div>' : '') + '</header>';

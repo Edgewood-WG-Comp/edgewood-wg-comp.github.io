@@ -112,3 +112,4 @@ html.dark .cell.empty{background:#3B1414;color:#FCA5A5}html.dark .cell.part{back
 .legend .cell{min-width:26px;min-height:22px;font-size:11px}
 select.plc{margin-top:6px;font-size:13px;padding:6px 8px}
 .row>.cbtn{flex:none}
+.adminpill{display:inline-block;vertical-align:middle;margin-left:8px;padding:3px 12px;border-radius:99px;background:#F5B700;color:#2E1065;font:800 13px system-ui,sans-serif;letter-spacing:.06em;text-transform:uppercase;text-decoration:none}
