@@ -29,7 +29,7 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
       '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.canEdit === false ? ' <span class="adminpill spot">' + esc(S.who.role) + '</span>' : ' <span class="adminpill">' + esc(S.who.role || 'Admin') + '</span> <button class="adminpill spottog' + (S.spot ? ' spot' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter ' + (S.spot ? 'on' : 'off') + '</button>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
-        [['grid', 'Day grid'], ['setup', 'Setup'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+        [['grid', 'Day grid'], ['setup', 'Setup'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
         '<a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
@@ -184,9 +184,36 @@
   }
   function loadSetup() { return call({ action: 'adminSetup' }).then(function (r) { if (r.error) flash('err', r.error); else { S.setup = r; if (S.sdate && !r.days.some(function (d) { return d.date === S.sdate; }) && !S.keepDay) S.sdate = ''; } render(); }); }
 
+  // ---------- access (super admins): who is an admin/spotter, and the role list
+  function renderAccess() {
+    var a = S.access; if (!a) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var rn = a.roles.map(function (r) { return r.name; });
+    var person = function (p) {
+      if (S.aedit === (p ? p.row : 'new')) return '<div class="editrow w"><div class="row"><div><label>Google email</label><input class="x-e" type="email" value="' + esc(p ? p.email : '') + '"></div><div><label>Name</label><input class="x-n" value="' + esc(p ? p.name : '') + '"></div></div>' +
+        '<div class="row"><div><label>Role</label><select class="x-r">' + opt(rn, p ? p.role : 'Admin') + '</select></div><div><label>Notes</label><input class="x-o" value="' + esc(p ? p.notes : '') + '"></div></div>' +
+        '<div class="row" style="margin-top:8px"><button class="sm" data-act="asave" data-row="' + (p ? p.row : '') + '">Save</button><button class="sm ghost" data-act="aedit" data-row="">Cancel</button></div></div>';
+      var r = a.roles.filter(function (x) { return x.name.toLowerCase() === p.role.toLowerCase(); })[0] || { canEdit: false };
+      return '<div class="status-line"><div><div class="who">' + esc(p.name || p.email) + ' <span class="adminpill' + (r.canEdit ? '' : ' spot') + '" style="font-size:11px">' + esc(p.role) + '</span></div><div class="whosub">' + esc([p.email, p.notes].filter(String).join(' · ')) + (p.email === S.who.email ? ' · you' : '') + '</div></div>' +
+        '<div class="acts"><button class="chk w" data-act="aedit" data-row="' + p.row + '">Edit</button><button class="chk ns w" data-act="adel" data-row="' + p.row + '" data-email="' + esc(p.email) + '">Remove</button></div></div>';
+    };
+    var role = function (r) {
+      if (S.redit === (r ? r.row : 'new')) return '<div class="editrow w"><div class="row"><div><label>Role name</label><input class="y-n" value="' + esc(r ? r.name : '') + '"></div><div><label>Description</label><input class="y-d" value="' + esc(r ? r.description : '') + '"></div></div>' +
+        '<label class="tog"><input type="checkbox" class="y-e"' + (r && r.canEdit ? ' checked' : '') + '> Can edit (place people, check in, change shifts…)</label>' +
+        '<label class="tog"><input type="checkbox" class="y-m"' + (r && r.canManage ? ' checked' : '') + '> Manage access (this Access page)</label>' +
+        '<div class="row" style="margin-top:8px"><button class="sm" data-act="rsave" data-row="' + (r ? r.row : '') + '">Save</button><button class="sm ghost" data-act="redit" data-row="">Cancel</button></div></div>';
+      var n = a.people.filter(function (p) { return p.role.toLowerCase() === r.name.toLowerCase(); }).length;
+      return '<div class="status-line"><div><div class="who">' + esc(r.name) + ' <span class="muted">· ' + n + ' ' + (n === 1 ? 'person' : 'people') + '</span></div><div class="whosub">' + esc(r.description) + '</div><div class="whosub">' +
+        (r.canEdit ? 'Can edit' : 'View only') + (r.canManage ? ' · Manages access' : '') + '</div></div><div class="acts"><button class="chk w" data-act="redit" data-row="' + r.row + '">Edit</button>' + (n ? '' : '<button class="chk ns w" data-act="rdel" data-row="' + r.row + '" data-name="' + esc(r.name) + '">Remove</button>') + '</div></div>';
+    };
+    return '<div class="card"><h2>Admins and spotters · ' + a.people.length + '</h2><p class="muted">They sign in with Google at admin.html. Changes work on their next page load.</p>' +
+      a.people.map(person).join('') + (S.aedit === 'new' ? person(null) : '<div style="margin-top:10px" class="w"><button class="sm ghost" data-act="aedit" data-row="new">+ Add someone</button></div>') + '</div>' +
+      '<div class="card"><h2>Roles</h2>' + a.roles.map(role).join('') + (S.redit === 'new' ? role(null) : '<div style="margin-top:10px" class="w"><button class="sm ghost" data-act="redit" data-row="new">+ Add a role</button></div>') + '</div>';
+  }
+  function loadAccess() { return call({ action: 'adminAccess' }).then(function (r) { if (r.error) flash('err', r.error); else S.access = r; render(); }); }
+
   function render() {
     if (!S.who) return renderSignIn();
-    var body = S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
+    var body = S.view === 'access' ? renderAccess() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
     var ro = S.who.canEdit === false || S.spot;
     app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.canEdit === false ? 'View only. As ' + esc(S.who.role) + ' you see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Tap SPOTTER ON in the title to edit again.') + '</div>' : '') + banner() + body + footer();
     if (ro) Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
@@ -219,7 +246,7 @@
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'); S.msg = null;
-    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'grid') loadDay(); else render(); }
+    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'access') loadAccess(); else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'grid') loadDay(); else render(); }
     else if (act === 'day') { S.cell = ''; S.addHits = null; loadDay(b.getAttribute('data-date')); }
     else if (act === 'cell') { S.cell = S.cell === b.getAttribute('data-id') ? '' : b.getAttribute('data-id'); S.addHits = null; S.addQ = ''; render(); var p = document.getElementById('panel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     else if (act === 'addsearch') { S.addQ = document.getElementById('addq').value; call({ action: 'adminSearch', q: S.addQ }).then(function (r) { S.addHits = r.people || []; render(); }); }
@@ -279,6 +306,17 @@
     else if (act === 'leaddel') { if (!confirm('Remove ' + b.getAttribute('data-name') + ' as a point person?')) return; b.disabled = true;
       call({ action: 'adminLeadDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadSetup(); }); }
     else if (act === 'spot') { S.spot = !S.spot; try { sessionStorage.setItem('sosSpotMode', S.spot ? '1' : '0'); } catch (x) {} render(); }
+    else if (act === 'aedit') { var ar = b.getAttribute('data-row'); S.aedit = ar === 'new' ? 'new' : ar ? +ar : ''; render(); }
+    else if (act === 'redit') { var rr = b.getAttribute('data-row'); S.redit = rr === 'new' ? 'new' : rr ? +rr : ''; render(); }
+    else if (act === 'asave') { var ae = b.closest('.editrow'), av = function (c) { return ae.querySelector(c).value.trim(); }; b.disabled = true;
+      call({ action: 'adminAccessSave', row: b.getAttribute('data-row') || '', email: av('.x-e'), name: av('.x-n'), role: av('.x-r'), notes: av('.x-o') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Saved.'); if (!r.error) S.aedit = ''; loadAccess(); }); }
+    else if (act === 'adel') { if (!confirm('Remove ' + b.getAttribute('data-email') + '?')) return; b.disabled = true;
+      call({ action: 'adminAccessDelete', row: b.getAttribute('data-row'), email: b.getAttribute('data-email') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadAccess(); }); }
+    else if (act === 'rsave') { var re = b.closest('.editrow'); b.disabled = true;
+      call({ action: 'adminRoleSave', row: b.getAttribute('data-row') || '', name: re.querySelector('.y-n').value.trim(), description: re.querySelector('.y-d').value.trim(), canEdit: re.querySelector('.y-e').checked, canManage: re.querySelector('.y-m').checked })
+        .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role saved.'); if (!r.error) S.redit = ''; loadAccess(); }); }
+    else if (act === 'rdel') { if (!confirm('Remove the role ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
+      call({ action: 'adminRoleDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role removed.'); loadAccess(); }); }
     else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
   });
 
