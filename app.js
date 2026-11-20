@@ -13,6 +13,11 @@
   function label(m) { m = ((m % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mi = m % 60, ap = h >= 12 ? 'PM' : 'AM'; return (h % 12 || 12) + (mi ? ':' + ('0' + mi).slice(-2) : '') + ' ' + ap; }
   function hhmm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
   function dayParts(iso) { var p = iso.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]); return { dow: d.toLocaleDateString('en-US', { weekday: 'short' }), md: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), long: d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) }; }
+  function tel(p) { var d = String(p || '').replace(/\D/g, ''); return d.length === 10 ? '+1' + d : d; }
+  function smsHref(phones, body) {
+    var list = phones.map(tel).filter(String).join(','), ios = /iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent) && 'ontouchend' in document;
+    return ios ? 'sms:/open?addresses=' + list + (body ? '&body=' + encodeURIComponent(body) : '') : 'sms:' + list + (body ? '?body=' + encodeURIComponent(body) : '');
+  }
   function nameOf(pid) { var p = (S.fam.people || []).filter(function (x) { return x.id === pid; })[0]; return p ? p.first : pid; }
 
   function call(d) {
@@ -53,7 +58,7 @@
     var r = S.reg;
     var kid = function (k, i) {
       return '<div class="kid" data-i="' + i + '"><div class="row"><div><label>Student first name</label><input class="kf" value="' + esc(k.first) + '"></div><div><label>Last name</label><input class="kl" value="' + esc(k.last) + '" placeholder="' + esc(r.last || '') + '"></div></div>' +
-        '<label>Group</label><select class="kg">' + groupOpts(k.group) + '</select>' + (i ? '<button class="link" data-act="kidrm" data-i="' + i + '">Remove</button>' : '') + '</div>';
+        '<div class="row"><div><label>Group</label><select class="kg">' + groupOpts(k.group) + '</select></div><div><label>Student cell (optional)</label><input class="kp" type="tel" value="' + esc(k.phone || '') + '"></div></div>' + (i ? '<button class="link" data-act="kidrm" data-i="' + i + '">Remove</button>' : '') + '</div>';
     };
     app.innerHTML = header('Set up your family') + banner() +
       '<div class="card"><h2>You</h2>' +
@@ -74,7 +79,7 @@
     if (!r.verified) r.email = v('rem');
     r.first = v('rf'); r.last = v('rl'); r.phone = v('rp'); r.p2first = v('p2f'); r.p2last = v('p2l'); r.p2email = v('p2e');
     r.p2open = !!(r.p2first || r.p2email);
-    r.kids = Array.prototype.map.call(document.querySelectorAll('.kid'), function (el) { return { first: el.querySelector('.kf').value.trim(), last: el.querySelector('.kl').value.trim(), group: el.querySelector('.kg').value }; });
+    r.kids = Array.prototype.map.call(document.querySelectorAll('.kid'), function (el) { return { first: el.querySelector('.kf').value.trim(), last: el.querySelector('.kl').value.trim(), group: el.querySelector('.kg').value, phone: el.querySelector('.kp').value.trim() }; });
   }
   var gsiLoading = false;
   function googleButton(gid) {
@@ -110,7 +115,9 @@
     if (!m.length) return '';
     return '<div class="card mine"><h2>Your shifts</h2><ul>' + m.map(function (x) {
       var dp = dayParts(x.date), act = x.status === 'Signed up' ? '<button class="sm ghost" data-act="' + (x.extraId ? 'xcancel' : 'cancel') + '" data-id="' + esc(x.extraId || x.signupId) + '">Cancel</button>' : '<span class="pill done">' + esc(x.status) + '</span>';
-      return '<li><div><div class="who">' + esc(x.person) + ' · ' + esc(x.station) + '</div><div class="whosub">' + esc(dp.dow + ' ' + dp.md + ', ' + x.label) + '</div></div>' + act + '</li>';
+      var lead = '';
+      if (x.lead) lead = '<div class="leadline">Point person: <b>' + esc(x.lead.name) + '</b>' + (x.lead.phone ? ' <a class="cbtn" href="tel:' + tel(x.lead.phone) + '">Call</a><a class="cbtn" href="' + smsHref([x.lead.phone], '') + '">Text</a>' : '<div class="whosub">' + esc(x.lead.opens || '') + '</div>') + '</div>';
+      return '<li><div><div class="who">' + esc(x.person) + ' · ' + esc(x.station) + '</div><div class="whosub">' + esc(dp.dow + ' ' + dp.md + ', ' + x.label) + '</div>' + lead + '</div>' + act + '</li>';
     }).join('') + '</ul></div>';
   }
   function tabs() {
@@ -131,7 +138,7 @@
     return '<div class="st' + (full ? ' full' : '') + '"><div><div class="nm">' + esc(s.station) + '</div><div class="meta">' +
       (s.who === 'Assigned' ? 'Filled by the coordinators' : full ? '<span class="open zero">Full</span>' : '<span class="open">' + s.open + ' of ' + s.spots + ' open</span>') +
       (s.counts !== 1 ? ' · counts as ' + s.counts : '') + (s.notes ? ' · ' + esc(s.notes) : '') + '</div>' +
-      (yours ? '<div class="yours">You: ' + esc(yours) + '</div>' : '') + '</div>' + btn + '</div>' + picker;
+      (yours ? '<div class="yours">You: ' + esc(yours) + '</div>' : '') + (s.names && s.names.length ? '<div class="names">' + esc(s.names.join(', ')) + '</div>' : '') + '</div>' + btn + '</div>' + picker;
   }
   function extraCard() {
     var who = S.day.extraHelpFor || [];
@@ -149,6 +156,7 @@
       '<div class="row"><div><label for="af">First name</label><input id="af"></div><div><label for="al">Last name</label><input id="al"></div></div>' +
       '<label for="at">They are a</label><select id="at"><option>Parent</option><option>Student</option><option value="Adult">Other adult (grandparent, friend)</option></select>' +
       '<label for="ag">Student group</label><select id="ag"><option value="">(students only)</option>' + g + '</select>' +
+      '<label for="aph">Cell phone (optional)</label><input id="aph" type="tel">' +
       '<div style="margin-top:12px"><button class="ghost" data-act="add" style="width:100%">Add to my family</button></div></details></div>';
   }
   function renderFamily() {
@@ -234,7 +242,7 @@
     }
     else if (act === 'add') {
       lock();
-      call({ action: 'addMember', code: S.code, first: document.getElementById('af').value, last: document.getElementById('al').value, type: document.getElementById('at').value, group: document.getElementById('ag').value })
+      call({ action: 'addMember', code: S.code, first: document.getElementById('af').value, last: document.getElementById('al').value, type: document.getElementById('at').value, group: document.getElementById('ag').value, phone: document.getElementById('aph').value })
         .then(function (r) { if (r.error) flash('err', r.error); return refresh(r.error ? '' : 'Added. The coordinators will double-check it.'); });
     }
   });
