@@ -61,3 +61,15 @@ hr{border:0;border-top:1px solid var(--line);margin:12px 0}
 .chk.ns.on{background:var(--bad);color:#fff}
 textarea{width:100%;font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;min-height:80px}
 .person{flex-wrap:wrap}.person .acts{width:100%;justify-content:flex-start;margin-top:6px}
+details.block>summary{list-style:none;display:flex;justify-content:space-between;align-items:center;cursor:pointer;gap:8px}
+details.block>summary::-webkit-details-marker{display:none}
+details.block>summary .bl{font-size:18px;font-weight:700}
+details.block>summary .bl:before{content:'▸';display:inline-block;width:18px;color:var(--brand2);transition:transform .15s}
+details.block[open]>summary .bl:before{transform:rotate(90deg)}
+details.block[open]>summary{margin-bottom:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chip{min-height:32px;padding:0 12px;border-radius:99px;background:#fff;color:var(--brand);border:1px solid #C4B5FD;font-size:13px}
+.chip.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.tog{display:flex;gap:8px;align-items:center;font-weight:600;color:var(--ink);margin-top:10px}
+.tog input{width:auto}
+.filter .row{flex-wrap:wrap}.filter .row button{flex:none}

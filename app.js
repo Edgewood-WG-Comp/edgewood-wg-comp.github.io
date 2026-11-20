@@ -5,7 +5,7 @@
   'use strict';
   var C = window.SOS || {}, API = C.API, app = document.getElementById('app');
   var KEY = (C.ENV === 'LIVE' ? '' : 'sbx_') + 'sosCode';
-  var S = { code: '', fam: null, day: null, date: '', msg: null, picking: '', busy: false };
+  var S = { code: '', fam: null, day: null, date: '', msg: null, picking: '', busy: false, open: {}, filter: {}, onlyOpen: false, fopen: false };
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
@@ -140,6 +140,20 @@
       (s.counts !== 1 ? ' · counts as ' + s.counts : '') + (s.notes ? ' · ' + esc(s.notes) : '') + '</div>' +
       (yours ? '<div class="yours">You: ' + esc(yours) + '</div>' : '') + (s.names && s.names.length ? '<div class="names">' + esc(s.names.join(', ')) + '</div>' : '') + '</div>' + btn + '</div>' + picker;
   }
+  function keep(s) {
+    if (S.onlyOpen && (s.open <= 0 || s.who === 'Assigned') && !s.yours.length) return false;
+    var f = Object.keys(S.filter);
+    return !f.length || S.filter[s.station];
+  }
+  function filterCard() {
+    var names = {}; S.day.blocks.forEach(function (b) { b.stations.forEach(function (s) { names[s.station] = 1; }); });
+    var list = Object.keys(names).sort(), n = Object.keys(S.filter).length;
+    return '<div class="card filter"><details' + (S.fopen ? ' open' : '') + ' id="fdet"><summary>Filter' + (n ? ' · ' + n + ' station' + (n > 1 ? 's' : '') : '') + (S.onlyOpen ? ' · open spots only' : '') + '</summary>' +
+      '<label class="tog"><input type="checkbox" id="fopen"' + (S.onlyOpen ? ' checked' : '') + '> Only show spots with openings</label>' +
+      '<div class="chips">' + list.map(function (x) { return '<button class="chip' + (S.filter[x] ? ' on' : '') + '" data-act="fchip" data-st="' + esc(x) + '">' + esc(x) + '</button>'; }).join('') + '</div>' +
+      '<div class="row" style="margin-top:8px"><button class="sm ghost" data-act="fclear">Clear</button><button class="sm ghost" data-act="expand">Expand all</button><button class="sm ghost" data-act="collapse">Collapse all</button></div></details></div>';
+  }
+  function saveView() { put('sosView', JSON.stringify({ filter: S.filter, onlyOpen: S.onlyOpen })); }
   function extraCard() {
     var who = S.day.extraHelpFor || [];
     if (!S.fam.open || !who.length || !S.day.blocks.length) return '';
@@ -168,7 +182,20 @@
       html += tabs();
       if (S.day.draft) html += '<div class="banner warn">Times are a draft until the contest schedule is final. If your shift moves, we\'ll email you.</div>';
       html += '<div class="muted" style="margin:10px 16px 0">' + esc(dp.long) + '</div>';
-      html += S.day.blocks.map(function (b) { return '<div class="card block"><h3>' + esc(b.label) + '</h3>' + b.stations.map(station).join('') + '</div>'; }).join('');
+      html += filterCard();
+      var shown = 0;
+      html += S.day.blocks.map(function (b) {
+        var sts = b.stations.filter(keep);
+        if (!sts.length) return '';
+        shown++;
+        var key = S.day.date + '|' + b.start, open = S.open[key] || S.picking && sts.some(function (x) { return x.id === S.picking; });
+        var free = sts.reduce(function (n, x) { return n + (x.who === 'Assigned' ? 0 : x.open); }, 0);
+        var mineHere = sts.some(function (x) { return x.yours.length; });
+        return '<details class="card block" data-key="' + esc(key) + '"' + (open ? ' open' : '') + '><summary><span class="bl">' + esc(b.label) + '</span>' +
+          '<span class="bs">' + (mineHere ? '<span class="pill done">You\'re on</span> ' : '') + '<span class="open' + (free ? '' : ' zero') + '">' + (free ? free + ' open' : 'Full') + '</span></span></summary>' +
+          sts.map(station).join('') + '</details>';
+      }).join('');
+      if (!shown) html += '<div class="card"><p class="muted">Nothing matches your filter this day. <button class="link" data-act="fclear">Show everything</button></p></div>';
       html += extraCard();
     } else html += '<div class="card"><p class="muted">No shifts posted yet.</p></div>';
     app.innerHTML = html + addCard() + footer();
@@ -197,6 +224,12 @@
   function render() { S.code && S.fam ? renderFamily() : renderSignIn(); }
 
   // ---------- actions
+  app.addEventListener('toggle', function (e) {
+    var d = e.target; if (!d || d.tagName !== 'DETAILS') return;
+    if (d.id === 'fdet') { S.fopen = d.open; return; }
+    var k = d.getAttribute('data-key'); if (k) S.open[k] = d.open;
+  }, true);
+  app.addEventListener('change', function (e) { if (e.target.id === 'fopen') { S.onlyOpen = e.target.checked; saveView(); render(); } });
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
@@ -229,6 +262,9 @@
     else if (act === 'sendcode') { lock(); call({ action: 'sendCode', email: document.getElementById('em').value }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
     else if (act === 'signout') { put(KEY, ''); S.code = ''; S.fam = null; S.day = null; try { window.google && google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
     else if (act === 'day') { S.picking = ''; loadDay(b.getAttribute('data-date')).then(render); }
+    else if (act === 'fchip') { var st = b.getAttribute('data-st'); if (S.filter[st]) delete S.filter[st]; else S.filter[st] = 1; saveView(); render(); }
+    else if (act === 'fclear') { S.filter = {}; S.onlyOpen = false; saveView(); render(); }
+    else if (act === 'expand' || act === 'collapse') { S.day.blocks.forEach(function (bl) { S.open[S.day.date + '|' + bl.start] = act === 'expand'; }); render(); }
     else if (act === 'pick') { S.picking = id || ''; render(); }
     else if (act === 'claim') { lock(); var pid = b.getAttribute('data-pid'); call({ action: 'claim', code: S.code, shiftId: id, personId: pid }).then(function (r) { S.picking = ''; if (r.error) { flash('err', r.error); return refresh(); } return refresh(nameOf(pid) + ' is signed up. Thank you!'); }); }
     else if (act === 'cancel' || act === 'xcancel') {
@@ -248,6 +284,7 @@
   });
 
   // ---------- start: ?code= link from email, else the remembered code
+  try { var v = JSON.parse(get('sosView') || '{}'); S.filter = v.filter || {}; S.onlyOpen = !!v.onlyOpen; } catch (e) {}
   var q = (location.search.match(/[?&]code=([A-Za-z0-9]+)/) || [])[1];
   if (q) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   var start = (q || get(KEY)).toUpperCase();
