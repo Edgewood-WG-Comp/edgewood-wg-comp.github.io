@@ -6,5 +6,5 @@ window.SOS = {
   NAME: 'SOS Crew',                // shown before sign-in; after sign-in the sheet's "App name" setting wins
   EVENT: 'Edgewood Showcase of Spins',
   CONTACT: 'edgewood.wg.comp@gmail.com',
-  GOOGLE_CLIENT_ID: ''             // admin sign-in
+  GOOGLE_CLIENT_ID: '1056188204433-sbj2a7s0rlpbv9vprpeei39pjjp09c4h.apps.googleusercontent.com'   // Google sign-in (not a secret); the sheet's Settings value wins
 };
