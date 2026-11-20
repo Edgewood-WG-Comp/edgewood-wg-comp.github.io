@@ -23,24 +23,78 @@
 
   // ---------- screens
   function header(sub) {
-    var name = (S.fam && S.fam.app) || C.NAME || 'SOS Crew', ev = (S.fam && S.fam.event) || C.EVENT || '';
+    var cf = S.fam || S.cfg || {}, name = cf.app || C.NAME || 'SOS Crew', ev = cf.event || C.EVENT || '';
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
       '<header><div class="eyebrow">' + esc(ev) + '</div><h1>' + esc(name) + '</h1><div class="hsub">' + esc(sub || 'Volunteer signup') + '</div></header>';
   }
   function footer() {
-    var c = (S.fam && S.fam.contact) || C.CONTACT;
+    var c = ((S.fam || S.cfg || {}).contact) || C.CONTACT;
     return '<footer>Questions? <a href="mailto:' + esc(c) + '">' + esc(c) + '</a>' + (S.code ? ' · <button class="link" data-act="signout">Sign out</button>' : '') + '</footer>';
   }
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
 
   function renderSignIn() {
-    app.innerHTML = header('Sign in with your family code') + banner() +
-      '<div class="card"><h2>Family code</h2>' +
-      '<p class="muted">Every band, winter guard and winter percussion family has a code. Anyone in the family can use it.</p>' +
-      '<label for="code">Code</label><input id="code" autocomplete="one-time-code" autocapitalize="characters" placeholder="e.g. K7QM2P">' +
-      '<div style="margin-top:12px"><button data-act="signin" style="width:100%">Open my family page</button></div></div>' +
-      '<div class="card"><h2>Don\'t have it?</h2><label for="em">Email on file with the band</label><input id="em" type="email" autocomplete="email">' +
-      '<div style="margin-top:12px"><button class="ghost" data-act="sendcode" style="width:100%">Email me my code</button></div></div>' + footer();
+    if (S.reg) return renderRegister();
+    var gid = (S.cfg && S.cfg.googleClientId) || C.GOOGLE_CLIENT_ID;
+    app.innerHTML = header('Sign in to pick your shifts') + banner() +
+      (S.choose ? '<div class="card"><h2>Which family?</h2>' + S.choose.map(function (c) { return '<button class="ghost" style="width:100%;margin-top:8px" data-act="usecode" data-code="' + esc(c.code) + '">' + esc(c.name) + '</button>'; }).join('') + '</div>' : '') +
+      '<div class="card"><h2>Sign in</h2>' +
+      (gid ? '<div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div><div class="or">or</div>' : '') +
+      '<label for="em">Your email</label><input id="em" type="email" autocomplete="email" inputmode="email" value="' + esc(S.email || '') + '">' +
+      '<div style="margin-top:12px"><button data-act="start" style="width:100%">Continue</button></div>' +
+      '<p class="muted" style="margin-bottom:0">We\'ll email you a sign-in link. New to ' + esc((S.cfg && S.cfg.app) || C.NAME) + '? Enter your email and we\'ll get your family set up.</p></div>' +
+      '<div class="card"><details><summary>Have a family code?</summary>' +
+      '<label for="code">Family code</label><input id="code" autocapitalize="characters" placeholder="e.g. K7QM2P">' +
+      '<div style="margin-top:12px"><button class="ghost" data-act="signin" style="width:100%">Open my family page</button></div></details></div>' + footer();
+    if (gid) googleButton(gid);
+  }
+  function groupOpts(sel) { return '<option value="">Group…</option>' + ((S.cfg && S.cfg.groups) || []).map(function (g) { return '<option' + (g === sel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join(''); }
+  function renderRegister() {
+    var r = S.reg;
+    var kid = function (k, i) {
+      return '<div class="kid" data-i="' + i + '"><div class="row"><div><label>Student first name</label><input class="kf" value="' + esc(k.first) + '"></div><div><label>Last name</label><input class="kl" value="' + esc(k.last) + '" placeholder="' + esc(r.last || '') + '"></div></div>' +
+        '<label>Group</label><select class="kg">' + groupOpts(k.group) + '</select>' + (i ? '<button class="link" data-act="kidrm" data-i="' + i + '">Remove</button>' : '') + '</div>';
+    };
+    app.innerHTML = header('Set up your family') + banner() +
+      '<div class="card"><h2>You</h2>' +
+      '<label for="rem">Email</label><input id="rem" type="email" value="' + esc(r.email) + '"' + (r.verified ? ' disabled' : '') + '>' +
+      (r.verified ? '<div class="muted">Verified with Google</div>' : '') +
+      '<div class="row"><div><label for="rf">First name</label><input id="rf" value="' + esc(r.first || '') + '" autocomplete="given-name"></div><div><label for="rl">Last name</label><input id="rl" value="' + esc(r.last || '') + '" autocomplete="family-name"></div></div>' +
+      '<label for="rp">Cell phone</label><input id="rp" type="tel" autocomplete="tel" value="' + esc(r.phone || '') + '"></div>' +
+      '<div class="card"><h2>Your students</h2><p class="muted">Everyone in JH Band, HS Band, Winter Guard or Winter Percussion.</p>' + r.kids.map(kid).join('<hr>') +
+      '<div style="margin-top:12px"><button class="ghost sm" data-act="kidadd">+ Another student</button></div></div>' +
+      '<div class="card"><details' + (r.p2open ? ' open' : '') + '><summary>Add a second parent (optional)</summary>' +
+      '<div class="row"><div><label for="p2f">First name</label><input id="p2f" value="' + esc(r.p2first || '') + '"></div><div><label for="p2l">Last name</label><input id="p2l" value="' + esc(r.p2last || '') + '"></div></div>' +
+      '<label for="p2e">Email (they can sign in too)</label><input id="p2e" type="email" value="' + esc(r.p2email || '') + '"></details></div>' +
+      '<div class="card"><button data-act="register" style="width:100%">Create my family</button>' +
+      '<div style="text-align:center;margin-top:10px"><button class="link" data-act="regcancel">Back</button></div></div>' + footer();
+  }
+  function readRegister() {
+    var r = S.reg, v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
+    if (!r.verified) r.email = v('rem');
+    r.first = v('rf'); r.last = v('rl'); r.phone = v('rp'); r.p2first = v('p2f'); r.p2last = v('p2l'); r.p2email = v('p2e');
+    r.p2open = !!(r.p2first || r.p2email);
+    r.kids = Array.prototype.map.call(document.querySelectorAll('.kid'), function (el) { return { first: el.querySelector('.kf').value.trim(), last: el.querySelector('.kl').value.trim(), group: el.querySelector('.kg').value }; });
+  }
+  var gsiLoading = false;
+  function googleButton(gid) {
+    var draw = function () {
+      var el = document.getElementById('gbtn'); if (!el || !window.google || !google.accounts) return;
+      google.accounts.id.initialize({ client_id: gid, callback: function (resp) { S.msg = null; googleDone(resp.credential); } });
+      google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'continue_with', shape: 'pill', width: 280 });
+    };
+    if (window.google && google.accounts) return draw();
+    if (gsiLoading) return; gsiLoading = true;
+    var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = draw; document.head.appendChild(sc);
+  }
+  function googleDone(token) {
+    app.querySelector('#gbtn') && (app.querySelector('#gbtn').innerHTML = '<span class="muted">Signing in…</span>');
+    call({ action: 'google', idToken: token }).then(function (r) {
+      if (r.error) { flash('err', r.error); return render(); }
+      if (r.code) return loadFamily(r.code);
+      if (r.choose) { S.choose = r.choose; return render(); }
+      if (r.register) { S.reg = { email: r.email, verified: true, idToken: token, first: r.first, last: r.last, kids: [{ first: '', last: '', group: '' }] }; render(); }
+    });
   }
 
   function statusCard() {
@@ -140,9 +194,32 @@
     var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
     var lock = function () { b.disabled = true; };
     S.msg = null;
-    if (act === 'signin') { var c = document.getElementById('code').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!c) return; lock(); loadFamily(c); }
+    if (act === 'start') {
+      var em = document.getElementById('em').value.trim(); if (!em) return; S.email = em; lock();
+      call({ action: 'start', email: em }).then(function (r) {
+        if (r.error) flash('err', r.error);
+        else if (r.register) S.reg = { email: r.email, kids: [{ first: '', last: '', group: '' }] };
+        else flash('ok', r.msg);
+        render();
+      });
+    }
+    else if (act === 'usecode') { S.choose = null; loadFamily(b.getAttribute('data-code')); }
+    else if (act === 'kidadd') { readRegister(); S.reg.kids.push({ first: '', last: '', group: '' }); render(); }
+    else if (act === 'kidrm') { readRegister(); S.reg.kids.splice(+b.getAttribute('data-i'), 1); render(); }
+    else if (act === 'regcancel') { S.reg = null; render(); }
+    else if (act === 'register') {
+      readRegister(); var r0 = S.reg; lock();
+      call({ action: 'register', email: r0.email, idToken: r0.idToken || '', first: r0.first, last: r0.last, phone: r0.phone, students: r0.kids, parent2: { first: r0.p2first, last: r0.p2last, email: r0.p2email } })
+        .then(function (r) {
+          if (r.error) { flash('err', r.error); return render(); }
+          S.reg = null;
+          if (r.code) { flash('ok', 'Your family is set up. Pick your shifts below.'); return loadFamily(r.code); }
+          flash('ok', r.msg); render();
+        });
+    }
+    else if (act === 'signin') { var c = document.getElementById('code').value.toUpperCase().replace(/[^A-Z0-9]/g, ''); if (!c) return; lock(); loadFamily(c); }
     else if (act === 'sendcode') { lock(); call({ action: 'sendCode', email: document.getElementById('em').value }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
-    else if (act === 'signout') { put(KEY, ''); S.code = ''; S.fam = null; S.day = null; render(); }
+    else if (act === 'signout') { put(KEY, ''); S.code = ''; S.fam = null; S.day = null; try { window.google && google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
     else if (act === 'day') { S.picking = ''; loadDay(b.getAttribute('data-date')).then(render); }
     else if (act === 'pick') { S.picking = id || ''; render(); }
     else if (act === 'claim') { lock(); var pid = b.getAttribute('data-pid'); call({ action: 'claim', code: S.code, shiftId: id, personId: pid }).then(function (r) { S.picking = ''; if (r.error) { flash('err', r.error); return refresh(); } return refresh(nameOf(pid) + ' is signed up. Thank you!'); }); }
@@ -166,5 +243,5 @@
   var q = (location.search.match(/[?&]code=([A-Za-z0-9]+)/) || [])[1];
   if (q) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
   var start = (q || get(KEY)).toUpperCase();
-  if (start) loadFamily(start); else render();
+  call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (start) loadFamily(start); else render(); });
 })();
