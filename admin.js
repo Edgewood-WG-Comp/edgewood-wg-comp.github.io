@@ -189,8 +189,11 @@
     var a = S.access; if (!a) return '<div class="card"><p class="muted">Loading…</p></div>';
     var rn = a.roles.map(function (r) { return r.name; });
     var person = function (p) {
-      if (S.aedit === (p ? p.row : 'new')) return '<div class="editrow w"><div class="row"><div><label>Google email</label><input class="x-e" type="email" value="' + esc(p ? p.email : '') + '"></div><div><label>Name</label><input class="x-n" value="' + esc(p ? p.name : '') + '"></div></div>' +
+      if (S.aedit === (p ? p.row : 'new')) return '<div class="editrow w">' + (p ? '' : '<label>Find a volunteer (or type the email below)</label><div class="row"><input class="x-q" placeholder="Name or email" value="' + esc(S.aQ || '') + '"><button class="sm" style="flex:none" data-act="afind">Find</button></div>' +
+        (S.aHits ? (S.aHits.length ? S.aHits.map(function (h) { return '<div class="person"><div><div class="who">' + esc(h.name) + '</div><div class="whosub">' + esc([h.type, h.family, h.email || 'no email on file'].filter(String).join(' · ')) + '</div></div><div class="acts">' + (h.email ? '<button class="chk" data-act="apick" data-email="' + esc(h.email) + '" data-name="' + esc(h.name) + '">Use</button>' : '') + '</div></div>'; }).join('') : '<p class="muted">No one found.</p>') : '')) +
+        '<div class="row"><div><label>Google email</label><input class="x-e" type="email" value="' + esc(p ? p.email : '') + '"></div><div><label>Name</label><input class="x-n" value="' + esc(p ? p.name : '') + '"></div></div>' +
         '<div class="row"><div><label>Role</label><select class="x-r">' + opt(rn, p ? p.role : 'Admin') + '</select></div><div><label>Notes</label><input class="x-o" value="' + esc(p ? p.notes : '') + '"></div></div>' +
+        '<div class="whosub">Use the Google account they\'ll sign in with; it can differ from the email on their family.</div>' +
         '<div class="row" style="margin-top:8px"><button class="sm" data-act="asave" data-row="' + (p ? p.row : '') + '">Save</button><button class="sm ghost" data-act="aedit" data-row="">Cancel</button></div></div>';
       var r = a.roles.filter(function (x) { return x.name.toLowerCase() === p.role.toLowerCase(); })[0] || { canEdit: false };
       return '<div class="status-line"><div><div class="who">' + esc(p.name || p.email) + ' <span class="adminpill' + (r.canEdit ? '' : ' spot') + '" style="font-size:11px">' + esc(p.role) + '</span></div><div class="whosub">' + esc([p.email, p.notes].filter(String).join(' · ')) + (p.email === S.who.email ? ' · you' : '') + '</div></div>' +
@@ -242,6 +245,7 @@
     if (e.key !== 'Enter') return;
     if (e.target.id === 'addq') app.querySelector('[data-act=addsearch]').click();
     if (e.target.id === 'famq') app.querySelector('[data-act=famsearch]').click();
+    if (e.target.classList.contains('x-q')) app.querySelector('[data-act=afind]').click();
   });
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
@@ -306,7 +310,10 @@
     else if (act === 'leaddel') { if (!confirm('Remove ' + b.getAttribute('data-name') + ' as a point person?')) return; b.disabled = true;
       call({ action: 'adminLeadDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadSetup(); }); }
     else if (act === 'spot') { S.spot = !S.spot; try { sessionStorage.setItem('sosSpotMode', S.spot ? '1' : '0'); } catch (x) {} render(); }
-    else if (act === 'aedit') { var ar = b.getAttribute('data-row'); S.aedit = ar === 'new' ? 'new' : ar ? +ar : ''; render(); }
+    else if (act === 'aedit') { var ar = b.getAttribute('data-row'); S.aedit = ar === 'new' ? 'new' : ar ? +ar : ''; S.aHits = null; S.aQ = ''; render(); }
+    else if (act === 'afind') { S.aQ = app.querySelector('.x-q').value; var keepE = app.querySelector('.x-e').value, keepN = app.querySelector('.x-n').value;
+      call({ action: 'adminSearch', q: S.aQ }).then(function (r) { S.aHits = r.people || []; render(); app.querySelector('.x-e').value = keepE; app.querySelector('.x-n').value = keepN; }); }
+    else if (act === 'apick') { app.querySelector('.x-e').value = b.getAttribute('data-email'); app.querySelector('.x-n').value = b.getAttribute('data-name'); S.aHits = null; Array.prototype.forEach.call(app.querySelectorAll('.editrow .person'), function (el) { el.remove(); }); }
     else if (act === 'redit') { var rr = b.getAttribute('data-row'); S.redit = rr === 'new' ? 'new' : rr ? +rr : ''; render(); }
     else if (act === 'asave') { var ae = b.closest('.editrow'), av = function (c) { return ae.querySelector(c).value.trim(); }; b.disabled = true;
       call({ action: 'adminAccessSave', row: b.getAttribute('data-row') || '', email: av('.x-e'), name: av('.x-n'), role: av('.x-r'), notes: av('.x-o') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Saved.'); if (!r.error) S.aedit = ''; loadAccess(); }); }
