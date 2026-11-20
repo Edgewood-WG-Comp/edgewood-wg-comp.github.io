@@ -29,8 +29,8 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
       '<header class="adm"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? ' <span class="adminpill">Admin</span>' : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
-        [['grid', 'Day grid'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
-        '<a class="np" href="lead.html">Point-person view</a></div>' : '') + '</header>';
+        [['grid', 'Day grid'], ['setup', 'Setup'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+        '<a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
     return '<footer><a href="./">Volunteer signup</a>' + (S.who ? ' · <button class="link" data-act="out">Sign out</button>' : '') +
@@ -128,9 +128,59 @@
       (f.families.length ? f.families.map(function (x) { return '<div class="status-line"><div><div class="who">' + esc(x.name) + ' · ' + esc(x.id) + '</div><div class="whosub">' + esc(x.people.join(', ')) + '</div><div class="whosub">' + esc(x.emails) + '</div>' + (x.check ? '<div class="whosub" style="color:var(--warn)">' + esc(x.notes) + '</div>' : '') + '</div><button class="chk" data-act="openfam" data-fid="' + esc(x.id) + '">Open</button></div>'; }).join('') : '<p class="muted">Nothing to review.</p>') + '</div>';
   }
 
+  // ---------- setup: shifts, stations, days, point people
+  var WHO = ['Anyone', 'HS & adults', 'Adults', 'Assigned'], STATUS = ['Draft', 'Final', 'Closed'];
+  function opt(list, sel) { return list.map(function (x) { return '<option' + (x === sel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); }
+  function toMin(t) { var p = String(t).split(':'); return +p[0] * 60 + +p[1]; }
+  function renderSetup() {
+    var u = S.setup; if (!u) return '<div class="card"><p class="muted">Loading…</p></div>';
+    if (!S.sdate) S.sdate = (u.days[0] || {}).date || '';
+    var dayShifts = u.shifts.filter(function (s) { return s.date === S.sdate; });
+    var blocks = {}; dayShifts.forEach(function (s) { if (s.status !== 'Closed') blocks[s.start + '-' + s.end] = { start: s.start, end: s.end }; });
+    var bk = Object.keys(blocks).sort();
+    var html = '<div class="tabs">' + u.days.map(function (x) { var p = dayParts(x.date); return '<button class="tab' + (x.date === S.sdate ? ' on' : '') + '" data-act="sday" data-date="' + x.date + '"><div class="d1">' + esc(p.dow) + '</div><div class="d2">' + esc(p.md) + '</div></button>'; }).join('') +
+      '<button class="tab" data-act="newday"><div class="d1">Add</div><div class="d2">+ Day</div></button></div>';
+    if (S.newday) html += '<div class="card"><h2>New day</h2><label for="nd">Date</label><input id="nd" type="date"><p class="muted">Then add its shifts below.</p><button class="sm" data-act="newdayok">Use this date</button></div>';
+    // add shift(s)
+    html += '<div class="card"><h2>Add a shift' + (S.sdate ? ' · ' + esc(dayParts(S.sdate).dow + ' ' + dayParts(S.sdate).md) : '') + '</h2>' +
+      '<label for="as">Station</label><input id="as" list="stl" placeholder="Pick one, or type a new station name"><datalist id="stl">' + u.stations.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' +
+      '<div class="row"><div><label for="ast">Start</label><input id="ast" type="time" value="08:00"></div><div><label for="aen">End</label><input id="aen" type="time" value="11:00"></div><div><label for="asp">Spots</label><input id="asp" type="number" min="0" value="2"></div></div>' +
+      '<div class="row"><div><label for="awh">Who can sign up</label><select id="awh">' + opt(WHO, 'Anyone') + '</select></div><div><label for="aco">Counts as</label><input id="aco" type="number" min="0" step="0.5" value="1"></div><div><label for="ass">Status</label><select id="ass">' + opt(STATUS, 'Draft') + '</select></div></div>' +
+      '<label for="ano">Note (optional, shown to families)</label><input id="ano">' +
+      (bk.length ? '<label class="tog"><input type="checkbox" id="aall"> Add at every time slot this day (' + bk.map(function (k) { return label(toMin(blocks[k].start)) + '–' + label(toMin(blocks[k].end)); }).join(', ') + ') instead of the times above</label>' : '') +
+      '<div style="margin-top:12px"><button data-act="addshift" style="width:100%">Add</button></div></div>';
+    // shifts by station
+    var byStation = {}; dayShifts.forEach(function (s) { (byStation[s.station] = byStation[s.station] || []).push(s); });
+    Object.keys(byStation).sort().forEach(function (st) {
+      var leads = u.leads.filter(function (l) { return l.station.toLowerCase() === st.toLowerCase(); });
+      html += '<div class="card"><h2>' + esc(st) + '</h2><div class="whosub">Point person: ' + (leads.length ? leads.map(function (l) { return esc(l.name + (l.day ? ' (' + l.day + ')' : '')); }).join(', ') : 'none yet') + ' · <button class="link" data-act="leadnew" data-st="' + esc(st) + '">+ point person</button></div>' +
+        byStation[st].sort(function (a, b) { return a.start < b.start ? -1 : 1; }).map(function (s) {
+          if (S.edit === s.id) return '<div class="editrow" data-id="' + esc(s.id) + '"><div class="row"><div><label>Station</label><input class="e-st" value="' + esc(s.station) + '" list="stl"></div><div><label>Date</label><input class="e-dt" type="date" value="' + esc(s.date) + '"></div></div>' +
+            '<div class="row"><div><label>Start</label><input class="e-s" type="time" value="' + esc(s.start) + '"></div><div><label>End</label><input class="e-e" type="time" value="' + esc(s.end) + '"></div><div><label>Spots</label><input class="e-sp" type="number" min="0" value="' + s.spots + '"></div></div>' +
+            '<div class="row"><div><label>Who</label><select class="e-w">' + opt(WHO, s.who) + '</select></div><div><label>Counts as</label><input class="e-c" type="number" min="0" step="0.5" value="' + s.counts + '"></div><div><label>Status</label><select class="e-stt">' + opt(STATUS, s.status) + '</select></div></div>' +
+            '<label>Note</label><input class="e-n" value="' + esc(s.notes) + '">' + (s.filled ? '<p class="muted">' + s.filled + ' signed up. Changing the date or time emails their families.</p>' : '') +
+            '<div class="row" style="margin-top:8px"><button class="sm" data-act="saveshift" data-id="' + esc(s.id) + '">Save</button><button class="sm ghost" data-act="editshift" data-id="">Cancel</button></div></div>';
+          return '<div class="status-line' + (s.status === 'Closed' ? ' closed' : '') + '"><div><div class="who">' + esc(label(toMin(s.start)) + ' – ' + label(toMin(s.end))) + ' <span class="muted">· ' + s.filled + ' of ' + s.spots + '</span></div><div class="whosub">' + esc([s.who, s.counts !== 1 ? 'counts ' + s.counts : '', s.status, s.notes, s.id].filter(String).join(' · ')) + '</div></div><button class="chk" data-act="editshift" data-id="' + esc(s.id) + '">Edit</button></div>';
+        }).join('') + '</div>';
+    });
+    // point people
+    html += '<div class="card" id="leadsCard"><h2>Point people</h2>' + (u.leads.length ? u.leads.map(function (l) {
+      if (S.ledit === l.row) return leadForm(l);
+      return '<div class="status-line"><div><div class="who">' + esc(l.name) + ' · ' + esc(l.station + (l.day ? ' (' + l.day + ')' : '')) + '</div><div class="whosub">' + esc([l.phone, l.email].filter(String).join(' · ') || 'no phone or email') + '</div></div><div class="acts"><button class="chk" data-act="leadedit" data-row="' + l.row + '">Edit</button>' + (l.email ? '<button class="chk" data-act="leademail" data-row="' + l.row + '">Email link</button>' : '') + '<button class="chk ns" data-act="leaddel" data-row="' + l.row + '" data-name="' + esc(l.name) + '">Remove</button></div></div>';
+    }).join('') : '<p class="muted">None yet.</p>') + (S.ledit === 'new' ? leadForm({ row: '', station: S.lstation || '', day: '', name: '', phone: '', email: '' }) : '<div style="margin-top:10px"><button class="sm ghost" data-act="leadnew">+ Add a point person</button></div>') + '</div>';
+    return html;
+  }
+  function leadForm(l) {
+    return '<div class="editrow"><div class="row"><div><label>Station</label><select class="l-st">' + opt(S.setup.stations, l.station) + '</select></div><div><label>Day (blank = all days)</label><input class="l-d" value="' + esc(l.day) + '" placeholder="e.g. Fri"></div></div>' +
+      '<div class="row"><div><label>Name</label><input class="l-n" value="' + esc(l.name) + '"></div><div><label>Cell</label><input class="l-p" type="tel" value="' + esc(l.phone) + '"></div></div>' +
+      '<label>Email (for their link and Google sign-in)</label><input class="l-e" type="email" value="' + esc(l.email) + '">' +
+      '<div class="row" style="margin-top:8px"><button class="sm" data-act="leadsave" data-row="' + esc(l.row) + '">Save</button><button class="sm ghost" data-act="leadcancel">Cancel</button></div></div>';
+  }
+  function loadSetup() { return call({ action: 'adminSetup' }).then(function (r) { if (r.error) flash('err', r.error); else { S.setup = r; if (S.sdate && !r.days.some(function (d) { return d.date === S.sdate; }) && !S.keepDay) S.sdate = ''; } render(); }); }
+
   function render() {
     if (!S.who) return renderSignIn();
-    var body = S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
+    var body = S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
     app.innerHTML = header() + banner() + body + footer();
   }
 
@@ -160,7 +210,7 @@
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'); S.msg = null;
-    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'grid') loadDay(); else render(); }
+    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'grid') loadDay(); else render(); }
     else if (act === 'day') { S.cell = ''; S.addHits = null; loadDay(b.getAttribute('data-date')); }
     else if (act === 'cell') { S.cell = S.cell === b.getAttribute('data-id') ? '' : b.getAttribute('data-id'); S.addHits = null; S.addQ = ''; render(); var p = document.getElementById('panel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     else if (act === 'addsearch') { S.addQ = document.getElementById('addq').value; call({ action: 'adminSearch', q: S.addQ }).then(function (r) { S.addHits = r.people || []; render(); }); }
@@ -181,6 +231,40 @@
     else if (act === 'resend') { b.disabled = true; call({ action: 'adminSendCode', familyId: b.getAttribute('data-fid') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
     else if (act === 'which') { S.which = b.getAttribute('data-w'); loadShort(); }
     else if (act === 'csv') { call({ action: 'adminShortCsv', which: S.which }).then(function (r) { if (r.error) { flash('err', r.error); return render(); } var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.csv], { type: 'text/csv' })); a.download = 'sos-crew-short-' + S.which + '.csv'; document.body.appendChild(a); a.click(); a.remove(); }); }
+    else if (act === 'sday') { S.sdate = b.getAttribute('data-date'); S.edit = ''; S.newday = false; render(); }
+    else if (act === 'newday') { S.newday = !S.newday; render(); }
+    else if (act === 'newdayok') { var nd = document.getElementById('nd').value; if (!nd) return; S.sdate = nd; S.keepDay = true; S.newday = false; if (!S.setup.days.some(function (x) { return x.date === nd; })) S.setup.days.push({ date: nd, day: '' }); S.setup.days.sort(function (a, c) { return a.date < c.date ? -1 : 1; }); render(); }
+    else if (act === 'addshift') {
+      var v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }, all = document.getElementById('aall');
+      var base = { station: v('as'), date: S.sdate, spots: v('asp'), who: v('awh'), counts: v('aco'), status: v('ass'), notes: v('ano') }, items = [];
+      if (!S.sdate) { flash('err', 'Pick a day first (or + Day).'); return render(); }
+      if (all && all.checked) { var seen = {}; S.setup.shifts.filter(function (s) { return s.date === S.sdate && s.status !== 'Closed'; }).forEach(function (s) { var k = s.start + '-' + s.end; if (!seen[k]) { seen[k] = 1; items.push(Object.assign({}, base, { start: s.start, end: s.end })); } }); }
+      else items.push(Object.assign({}, base, { start: v('ast'), end: v('aen') }));
+      b.disabled = true;
+      call({ action: 'adminShiftAdd', items: items }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || items.length + ' shift(s) added to ' + base.station + '.'); S.keepDay = false; loadSetup(); });
+    }
+    else if (act === 'editshift') { S.edit = b.getAttribute('data-id') || ''; render(); }
+    else if (act === 'saveshift') {
+      var row = b.closest('.editrow'), g = function (c) { return row.querySelector(c).value.trim(); };
+      var d2 = { action: 'adminShiftSave', id: b.getAttribute('data-id'), station: g('.e-st'), date: g('.e-dt'), start: g('.e-s'), end: g('.e-e'), spots: g('.e-sp'), who: g('.e-w'), counts: g('.e-c'), status: g('.e-stt'), notes: g('.e-n') };
+      b.disabled = true;
+      call(d2).then(function (r) {
+        if (r.confirm) { if (!confirm(r.error)) { b.disabled = false; return; } d2.force = true; return call(d2); }
+        return r;
+      }).then(function (r) { if (!r) return; flash(r.error ? 'err' : 'ok', r.error || ('Saved.' + (r.notified ? ' ' + r.notified + ' family email(s) sent about the new time.' : ''))); if (!r.error) S.edit = ''; loadSetup(); });
+    }
+    else if (act === 'leadnew') { S.ledit = 'new'; S.lstation = b.getAttribute('data-st') || ''; render(); var lc = document.getElementById('leadsCard'); if (lc) lc.scrollIntoView({ behavior: 'smooth' }); }
+    else if (act === 'leadedit') { S.ledit = +b.getAttribute('data-row'); render(); }
+    else if (act === 'leadcancel') { S.ledit = ''; render(); }
+    else if (act === 'leadsave') {
+      var fr = b.closest('.editrow'), q = function (c) { return fr.querySelector(c).value.trim(); };
+      b.disabled = true;
+      call({ action: 'adminLeadSave', row: b.getAttribute('data-row') || '', station: q('.l-st'), day: q('.l-d'), name: q('.l-n'), phone: q('.l-p'), email: q('.l-e') })
+        .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Point person saved.'); if (!r.error) S.ledit = ''; loadSetup(); });
+    }
+    else if (act === 'leademail') { b.disabled = true; call({ action: 'adminLeadEmail', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
+    else if (act === 'leaddel') { if (!confirm('Remove ' + b.getAttribute('data-name') + ' as a point person?')) return; b.disabled = true;
+      call({ action: 'adminLeadDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadSetup(); }); }
     else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
   });
 
