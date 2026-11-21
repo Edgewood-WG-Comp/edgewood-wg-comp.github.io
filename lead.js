@@ -42,7 +42,7 @@
   function people(slot) {
     if (!slot.people.length) return '<div class="muted" style="padding:6px 0">No one yet.</div>';
     return slot.people.slice().sort(function (a, b) { return (a.post || '~') < (b.post || '~') ? -1 : (a.post || '~') > (b.post || '~') ? 1 : a.name < b.name ? -1 : 1; }).map(function (p) {
-      var sub = [p.type, p.group, p.phone ? p.phone + (p.fromFamily ? ' (family)' : '') : 'no phone on file'].filter(String).join(' · ');
+      var sub = [p.type, p.group, p.phone ? p.phone + (p.fromFamily ? ' (family)' : '') : 'no phone on file', p.bg && p.bg !== 'Cleared' && p.bg !== 'Exempt' ? '⚠ background check: ' + p.bg.toLowerCase() : ''].filter(String).join(' · ');
       var inOn = p.status === 'Checked in', nsOn = p.status === 'No-show';
       return '<div class="person"><div><div class="who">' + esc(p.name) + (p.post && (S.data.lead.viewOnly || (S.data.lead.all && get('sosSpotMode', true) !== '0') || !(S.data.posts || {})[slot.station]) ? ' <span class="pill tbd">' + esc(p.post) + '</span>' : '') + '</div><div class="whosub">' + esc(sub) + '</div>' + postSel(p, slot.station) + '</div><div class="acts">' +
         (p.phone ? '<a class="cbtn" href="tel:' + tel(p.phone) + '">Call</a><a class="cbtn alt solo" href="' + smsHref([p.phone], greet(p.name, slot.station)) + '">Text</a>' : '') +

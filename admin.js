@@ -29,7 +29,7 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
       '<header class="adm"><img class=\"logo\" src=\"img/logo-160.png\" alt=\"SOS Crew – Edgewood Winter Guard\" width=\"72\" height=\"72\"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.canEdit === false ? ' <span class="adminpill spot">' + esc(S.who.role) + '</span>' : ' <span class="adminpill">' + esc(S.who.role || 'Admin') + '</span> <button class="adminpill spottog' + (S.spot ? ' spot' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter ' + (S.spot ? 'on' : 'off') + '</button>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
-        [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['hat', 'Hat'], ['review', 'Review']].concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+        [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['hat', 'Hat']].concat(S.who.bgOn ? [['checks', 'Checks']] : []).concat([['review', 'Review']]).concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
         '<a class="np" href="board.html">Live board</a><a class="np" href="track.html">Unit tracker</a><a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
@@ -112,11 +112,27 @@
         '<div class="whosub">Emails: ' + esc(f.emails.join(', ') || 'none') + (f.phones ? ' · Phones: ' + esc(f.phones) : '') + ' · Code: <b>' + esc(f.code) + '</b></div>' +
         '<div class="row" style="margin-top:10px;flex-wrap:wrap"><button class="sm" style="flex:none" data-act="resend" data-fid="' + esc(f.id) + '">Email sign-in link</button><a class="cbtn alt" target="_blank" href="' + esc(base + '?code=' + f.code) + '">Open as this family</a></div>' +
         '<h2 style="margin-top:14px">Owes</h2>' + S.fam.status.lines.map(function (l) { return '<div class="status-line"><div><div class="who">' + esc(l.who) + '</div><div class="whosub">' + esc((l.group ? l.group + ' · ' : '') + 'owes ' + l.owed + ' · signed up ' + l.signed + ' · worked ' + l.worked) + '</div></div>' + (l.needSignup > 0 ? '<span class="pill need">' + l.needSignup + ' more</span>' : '<span class="pill done">✓</span>') + '</div>'; }).join('') +
-        '<h2 style="margin-top:14px">People</h2>' + S.fam.people.map(function (p) { return '<div class="status-line"><div><div class="who">' + esc(p.name) + '</div><div class="whosub">' + esc([p.type, p.group, p.phone, p.email, p.source].filter(String).join(' · ')) + '</div></div></div>'; }).join('') +
+        '<h2 style="margin-top:14px">People</h2>' + S.fam.people.map(function (p) { return '<div class="status-line"><div><div class="who">' + esc(p.name) + '</div><div class="whosub">' + esc([p.type, p.group, p.phone, p.email, p.source].filter(String).join(' · ')) + '</div></div>' + bgCtl(p) + '</div>'; }).join('') +
         '<h2 style="margin-top:14px">Shifts</h2>' + (S.fam.mine.length ? S.fam.mine.map(function (m) { var p = dayParts(m.date); return '<div class="status-line"><div><div class="who">' + esc(m.person + ' · ' + m.station) + '</div><div class="whosub">' + esc(p.dow + ' ' + p.md + ', ' + m.label + ' · ' + m.status) + '</div></div>' + (m.status === 'Signed up' ? '<button class="chk ns" data-act="' + (m.extraId ? 'xcancel' : 'cancel') + '" ' + (m.extraId ? 'data-x="' + esc(m.extraId) : 'data-s="' + esc(m.signupId)) + '" data-refam="1">Remove</button>' : '') + '</div>'; }).join('') : '<p class="muted">None yet.</p>') + '</div>';
     }
     return html;
   }
+  // ---------- background checks (Settings › Background checks = Yes)
+  var BG = ['Cleared', 'Pending', 'Not on file', 'Exempt'];
+  function bgCtl(p) {
+    if (!p.bg) return '';
+    if (p.type === 'Student') return '<span class="pill done">Exempt</span>';
+    var ro = S.who.canEdit === false || S.spot;
+    return ro ? '<span class="pill ' + (p.bg === 'Cleared' || p.bg === 'Exempt' ? 'done' : 'need') + '">' + esc(p.bg) + '</span>' : '<select class="bgsel" data-pid="' + esc(p.id) + '" style="width:auto">' + opt(BG, p.bg) + '</select>';
+  }
+  function renderChecks() {
+    var r = S.bg; if (!r) return '<div class="card"><p class="muted">Loading…</p></div>';
+    return '<div class="card"><h2>Background checks</h2><p class="muted">Adults (not students) on the People tab: ' + BG.map(function (k) { return esc(k) + ' ' + (r.counts[k] || 0); }).join(' · ') + '. Set a status here or in Families; the school report import comes later.</p></div>' +
+      '<div class="card"><h2>Signed up but not cleared · ' + r.rows.length + '</h2>' + (r.rows.length ? r.rows.map(function (x) {
+        return '<div class="status-line"><div><div class="who">' + esc(x.name) + '</div><div class="whosub"><button class="link" data-act="openfam" data-fid="' + esc(x.familyId) + '">' + esc(x.family) + '</button> · ' + x.shifts + ' shift' + (x.shifts > 1 ? 's' : '') + (x.date ? ' · ' + esc(x.date) : '') + '</div></div>' + bgCtl({ id: x.personId, bg: x.status, type: 'Parent' }) + '</div>';
+      }).join('') : '<p class="muted">Everyone signed up is cleared. 🎉</p>') + '</div>';
+  }
+  function loadChecks() { return call({ action: 'adminBg' }).then(function (r) { if (r.error) flash('err', r.error); else S.bg = r; render(); }); }
   // ---------- who's short
   function renderShort() {
     var r = S.short, html = '<div class="card"><h2>Who\'s short</h2><div class="row" style="flex-wrap:wrap"><button class="chip' + (S.which === 'signup' ? ' on' : '') + '" style="flex:none" data-act="which" data-w="signup">Not signed up enough</button><button class="chip' + (S.which === 'worked' ? ' on' : '') + '" style="flex:none" data-act="which" data-w="worked">Didn\'t work enough (after the event)</button><button class="sm ghost" style="flex:none" data-act="csv">Download CSV</button></div>';
@@ -275,7 +291,7 @@
 
   function render() {
     if (!S.who) return renderSignIn();
-    var body = S.view === 'units' ? renderUnits() : S.view === 'access' ? renderAccess() + trackersCard() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : S.view === 'hat' ? renderHat() : renderGrid();
+    var body = S.view === 'units' ? renderUnits() : S.view === 'access' ? renderAccess() + trackersCard() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : S.view === 'hat' ? renderHat() : S.view === 'checks' ? renderChecks() : renderGrid();
     var ro = S.who.canEdit === false || S.spot;
     app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.canEdit === false ? 'View only. As ' + esc(S.who.role) + ' you see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Tap SPOTTER ON in the title to edit again.') + '</div>' : '') + banner() + body + footer();
     if (ro) Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
@@ -297,6 +313,7 @@
   app.addEventListener('change', function (e) {
     var t = e.target;
     if (t.classList.contains('t-s')) { t.closest('.chip').classList.toggle('on', t.checked); return; }
+    if (t.classList.contains('bgsel')) { t.disabled = true; call({ action: 'adminBgSet', personId: t.getAttribute('data-pid'), status: t.value }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Saved.'); if (S.view === 'checks') loadChecks(); else if (S.fam) loadFam(S.fam.family.id); }); return; }
     if (t.classList.contains('postsel')) { t.disabled = true; call({ action: 'setPost', signupId: t.getAttribute('data-id'), post: t.value }).then(function (r) { if (r.error) flash('err', r.error); loadDay(); }); return; }
     if (t.classList.contains('plc') && t.value) { var x = t.getAttribute('data-x'), sid = t.value; t.disabled = true;
       call({ action: 'adminPlace', extraId: x, shiftId: sid, overfill: true }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Placed.'); loadDay(); }); }
@@ -310,7 +327,7 @@
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'); S.msg = null;
-    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'units') loadUnits(); else if (S.view === 'access') { loadAccess(); loadUnits(); } else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'hat') loadHat(); else if (S.view === 'grid') loadDay(); else render(); }
+    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'units') loadUnits(); else if (S.view === 'access') { loadAccess(); loadUnits(); } else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'hat') loadHat(); else if (S.view === 'checks') loadChecks(); else if (S.view === 'grid') loadDay(); else render(); }
     else if (act === 'day') { S.cell = ''; S.addHits = null; loadDay(b.getAttribute('data-date')); }
     else if (act === 'cell') { S.cell = S.cell === b.getAttribute('data-id') ? '' : b.getAttribute('data-id'); S.addHits = null; S.addQ = ''; render(); var p = document.getElementById('panel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     else if (act === 'addsearch') { S.addQ = document.getElementById('addq').value; call({ action: 'adminSearch', q: S.addQ }).then(function (r) { S.addHits = r.people || []; render(); }); }

@@ -96,7 +96,7 @@
       return '<div class="ucard ' + cls + (me.own === u.id ? ' own' : '') + '"><div class="uh"><div><span class="uo">' + esc(u.order) + '</span> <b class="un">' + esc(u.name) + '</b>' + (u.cls ? ' <span class="muted">' + esc(u.cls) + '</span>' : '') + (me.own === u.id ? ' <span class="pill done">You</span>' : '') + '</div>' +
         '<div class="ut">' + (u.warmup ? 'Warm-up ' + esc(hm(u.warmup)) : '') + (u.perform ? ' · Perform <b>' + esc(hm(u.perform)) + '</b>' : '') + '</div></div>' +
         (tog ? '<div class="chips2">' + chip(tog, 'Unit') + '</div>' : '<div class="chips2">' + chip(st.g, 'Guard') + chip(st.p, 'Props / tarp') + '</div>') +
-        (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
+        (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') + guides(u) +
         (me.kind !== 'director' ? '<div class="whosub">Director' + (u.director ? ': ' + esc(u.director) : '') + ' · ' + (st.d ? '✓ ' + esc(st.d.s.id === 'D1' ? 'checked in' : st.d.s.name) + ' ' + esc(clock(st.d.at)) : 'not checked in') + (u.phone ? ' · <a href="tel:' + tel(u.phone) + '">Call</a> · <a href="sms:' + tel(u.phone) + '">Text</a>' : '') + '</div>' : '') +
         (me.steps.length && MODE === 'board' ? '<div style="margin-top:6px"><a class="cbtn alt" href="track.html#' + esc(u.id) + '">Update</a></div>' : '') + '</div>';
     }).join('') + '</div>';
@@ -118,7 +118,7 @@
     var u = b.units.filter(function (x) { return x.id === S.unit; })[0];
     if (u) {
       var st = status(u);
-      html += '<div class="card"><h2>' + esc(u.name) + (u.perform ? ' · perform ' + esc(hm(u.perform)) : '') + '</h2>' + (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
+      html += '<div class="card"><h2>' + esc(u.name) + (u.perform ? ' · perform ' + esc(hm(u.perform)) : '') + '</h2>' + (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') + guides(u) +
         sections(b.steps).map(function (sec) {
           return '<div class="trk"><div class="kicker">' + esc(sec.label) + '</div>' + sec.list.map(function (s) {
             var d = u.done[s.id], can = me.steps.indexOf(s.id) >= 0 && (!me.scope || me.scope[s.id] === 'all' || (me.scope[s.id] || []).indexOf(u.id) >= 0);
@@ -127,6 +127,10 @@
         }).join('') + '</div>';
     }
     app.innerHTML = html + escalate(me) + footer();
+  }
+  /* Homeroom guides on this unit (admins and coordinators get them from the server; nobody else does). */
+  function guides(u) {
+    return (u.guides || []).map(function (g) { return '<div class="whosub">Guide: ' + esc(g.name) + ' <span class="muted">' + esc(g.when) + '</span>' + (g.phone ? ' · <a href="tel:' + tel(g.phone) + '">Call</a> · <a href="sms:' + tel(g.phone) + '">Text</a>' : ' · no phone') + '</div>'; }).join('');
   }
   /* Who to go to: a group member's lead, else the Director escalation text. Never a director's number. */
   function escalate(me) {

@@ -60,28 +60,32 @@
     var r = S.reg;
     var kid = function (k, i) {
       return '<div class="kid" data-i="' + i + '"><div class="row"><div><label>Student first name</label><input class="kf" value="' + esc(k.first) + '"></div><div><label>Last name</label><input class="kl" value="' + esc(k.last) + '" placeholder="' + esc(r.last || '') + '"></div></div>' +
-        '<div class="row"><div><label>Group</label><select class="kg">' + groupOpts(k.group) + '</select></div><div><label>Student cell (optional)</label><input class="kp" type="tel" value="' + esc(k.phone || '') + '"></div></div>' + (i ? '<button class="link" data-act="kidrm" data-i="' + i + '">Remove</button>' : '') + '</div>';
+        '<div class="row"><div><label>Group</label><select class="kg">' + groupOpts(k.group) + '</select></div><div><label>Student\'s cell, if they have one (for texts)</label><input class="kp" type="tel" value="' + esc(k.phone || '') + '"></div></div>' + (i ? '<button class="link" data-act="kidrm" data-i="' + i + '">Remove</button>' : '') + '</div>';
     };
     app.innerHTML = header('Set up your family') + banner() +
       '<div class="card"><h2>You</h2>' +
       '<label for="rem">Email</label><input id="rem" type="email" value="' + esc(r.email) + '"' + (r.verified ? ' disabled' : '') + '>' +
       (r.verified ? '<div class="muted">Verified with Google</div>' : '') +
       '<div class="row"><div><label for="rf">First name</label><input id="rf" value="' + esc(r.first || '') + '" autocomplete="given-name"></div><div><label for="rl">Last name</label><input id="rl" value="' + esc(r.last || '') + '" autocomplete="family-name"></div></div>' +
-      '<label for="rp">Cell phone</label><input id="rp" type="tel" autocomplete="tel" value="' + esc(r.phone || '') + '"></div>' +
-      '<div class="card"><h2>Your students</h2><p class="muted">Everyone in JH Band, HS Band, Winter Guard or Winter Percussion.</p>' + r.kids.map(kid).join('<hr>') +
+      '<label for="rp">Cell phone (for texts)</label><input id="rp" type="tel" autocomplete="tel" value="' + esc(r.phone || '') + '">' +
+      '<label class="tog"><input type="checkbox" id="rstu"' + (r.isStudent ? ' checked' : '') + '> I am a current student</label>' +
+      (r.isStudent ? '<label for="rg">Your group</label><select id="rg">' + groupOpts(r.group) + '</select>' : '') + '</div>' +
+      '<div class="card"><h2>' + (r.isStudent ? 'Brothers or sisters in the program (optional)' : 'Your students') + '</h2><p class="muted">Everyone in JH Band, HS Band, Winter Guard or Winter Percussion.</p>' + r.kids.map(kid).join('<hr>') +
       '<div style="margin-top:12px"><button class="ghost sm" data-act="kidadd">+ Another student</button></div></div>' +
-      '<div class="card"><details' + (r.p2open ? ' open' : '') + '><summary>Add a second parent (optional)</summary>' +
+      '<div class="card"><details' + (r.p2open ? ' open' : '') + '><summary>' + (r.isStudent ? 'Add a parent (optional)' : 'Add a second parent (optional)') + '</summary>' +
       '<div class="row"><div><label for="p2f">First name</label><input id="p2f" value="' + esc(r.p2first || '') + '"></div><div><label for="p2l">Last name</label><input id="p2l" value="' + esc(r.p2last || '') + '"></div></div>' +
-      '<label for="p2e">Email (they can sign in too)</label><input id="p2e" type="email" value="' + esc(r.p2email || '') + '"></details></div>' +
+      '<label for="p2e">Email (they can sign in too)</label><input id="p2e" type="email" value="' + esc(r.p2email || '') + '">' +
+      '<label for="p2p">Cell phone (for texts)</label><input id="p2p" type="tel" value="' + esc(r.p2phone || '') + '"></details></div>' +
       '<div class="card"><button data-act="register" style="width:100%">Create my family</button>' +
       '<div style="text-align:center;margin-top:10px"><button class="link" data-act="regcancel">Back</button></div></div>' + footer();
   }
   function readRegister() {
     var r = S.reg, v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
     if (!r.verified) r.email = v('rem');
-    r.first = v('rf'); r.last = v('rl'); r.phone = v('rp'); r.p2first = v('p2f'); r.p2last = v('p2l'); r.p2email = v('p2e');
+    r.first = v('rf'); r.last = v('rl'); r.phone = v('rp'); r.p2first = v('p2f'); r.p2last = v('p2l'); r.p2email = v('p2e'); r.p2phone = v('p2p'); var su = document.getElementById('rstu'); r.isStudent = !!(su && su.checked); r.group = v('rg') || r.group;
     r.p2open = !!(r.p2first || r.p2email);
     r.kids = Array.prototype.map.call(document.querySelectorAll('.kid'), function (el) { return { first: el.querySelector('.kf').value.trim(), last: el.querySelector('.kl').value.trim(), group: el.querySelector('.kg').value, phone: el.querySelector('.kp').value.trim() }; });
+    if (r.isStudent) r.kids = r.kids.filter(function (k) { return k.first; });
   }
   var gsiLoading = false;
   function googleButton(gid) {
@@ -111,6 +115,12 @@
       var pill = l.needSignup <= 0 ? '<span class="pill done">Signed up ✓</span>' : '<span class="pill need">' + l.needSignup + ' more</span>';
       return '<div class="status-line"><div><div class="who">' + esc(l.who) + '</div><div class="whosub">' + (l.group ? esc(l.group) + ' · ' : '') + 'owes ' + l.owed + ' · signed up ' + l.signed + (l.worked ? ' · worked ' + l.worked : '') + '</div></div>' + pill + '</div>';
     }).join('') + '</div>';
+  }
+  function bgCard() {
+    if (!S.fam.bgOn) return '';
+    var ad = (S.fam.people || []).filter(function (p) { return p.type !== 'Student'; }); if (!ad.length) return '';
+    return '<div class="card"><h2>Background checks</h2><p class="muted">Adults who volunteer need a background check on file with the school. Students are exempt.' + (S.fam.bgInfo ? ' ' + esc(S.fam.bgInfo) : '') + '</p>' +
+      ad.map(function (p) { var ok = p.bg === 'Cleared' || p.bg === 'Exempt'; return '<div class="status-line"><div><div class="who">' + esc(p.name) + '</div>' + (p.bgDate ? '<div class="whosub">' + esc(p.bgDate) + '</div>' : '') + '</div><span class="pill ' + (ok ? 'done' : p.bg === 'Pending' ? 'tbd' : 'need') + '">' + esc(p.bg || 'Not on file') + '</span></div>'; }).join('') + '</div>';
   }
   function mineCard() {
     var m = S.fam.mine || [], hat = S.fam.hat || [];
@@ -186,7 +196,8 @@
       '<div class="row"><div><label for="af">First name</label><input id="af"></div><div><label for="al">Last name</label><input id="al"></div></div>' +
       '<label for="at">They are a</label><select id="at"><option>Parent</option><option>Student</option><option value="Adult">Other adult (grandparent, friend)</option></select>' +
       '<label for="ag">Student group</label><select id="ag"><option value="">(students only)</option>' + g + '</select>' +
-      '<label for="aph">Cell phone (optional)</label><input id="aph" type="tel">' +
+      '<div class="whosub">A current student? Pick Student; students are exempt from background checks.</div>' +
+      '<label for="aph">Cell phone (for texts; students too, if they have one)</label><input id="aph" type="tel">' +
       '<div style="margin-top:12px"><button class="ghost" data-act="add" style="width:100%">Add to my family</button></div></details></div>';
   }
   function renderFamily() {
@@ -194,7 +205,7 @@
     var html = header(S.fam.family.name) + banner();
     if (!S.fam.open) html += '<div class="banner info">Signups aren\'t open yet. You can look around; we\'ll email when they open.</div>';
     if (S.fam.units && (S.fam.units.board || S.fam.units.track)) html += '<div class="card unitlinks"><h2>Contest day</h2><div class="row" style="flex-wrap:wrap">' + (S.fam.units.board ? '<a class="cbtn alt" href="board.html">Live unit board</a>' : '') + (S.fam.units.track ? '<a class="cbtn" href="track.html">Unit tracker</a>' : '') + '</div><p class="muted" style="margin-bottom:0">Sign in there with Google, or use your tracker link.</p></div>';
-    html += statusCard() + mineCard() + calCard();
+    html += statusCard() + bgCard() + mineCard() + calCard();
     if (S.day && S.day.days.length) {
       html += tabs();
       if (S.day.draft) html += '<div class="banner warn">Times are a draft until the contest schedule is final. If your shift moves, we\'ll email you.</div>';
@@ -247,7 +258,7 @@
     if (d.id === 'caldet') { S.calOpen = d.open; return; }
     var k = d.getAttribute('data-key'); if (k) S.open[k] = d.open;
   }, true);
-  app.addEventListener('change', function (e) { if (e.target.id === 'fopen') { S.onlyOpen = e.target.checked; saveView(); render(); } });
+  app.addEventListener('change', function (e) { if (e.target.id === 'rstu') { readRegister(); render(); return; } if (e.target.id === 'fopen') { S.onlyOpen = e.target.checked; saveView(); render(); } });
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
@@ -268,7 +279,7 @@
     else if (act === 'regcancel') { S.reg = null; render(); }
     else if (act === 'register') {
       readRegister(); var r0 = S.reg; lock();
-      call({ action: 'register', email: r0.email, idToken: r0.idToken || '', first: r0.first, last: r0.last, phone: r0.phone, students: r0.kids, parent2: { first: r0.p2first, last: r0.p2last, email: r0.p2email } })
+      call({ action: 'register', email: r0.email, idToken: r0.idToken || '', first: r0.first, last: r0.last, phone: r0.phone, students: r0.kids, isStudent: r0.isStudent, group: r0.group, parent2: { first: r0.p2first, last: r0.p2last, email: r0.p2email, phone: r0.p2phone } })
         .then(function (r) {
           if (r.error) { flash('err', r.error); return render(); }
           S.reg = null;
