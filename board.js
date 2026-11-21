@@ -6,14 +6,14 @@
   'use strict';
   var C = window.SOS || {}, API = C.API, app = document.getElementById('app'), MODE = document.body.getAttribute('data-mode') || 'board';
   var P = C.ENV === 'LIVE' ? '' : 'sbx_';
-  var S = { b: null, msg: null, unit: '', undo: null, skew: 0, cfg: null, track: '', ucode: '', token: '' };
+  var S = { b: null, msg: null, unit: '', undo: null, skew: 0, cfg: null, track: '', ucode: '', token: '', fam: '', lead: '' };
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function get(k, ss) { try { return (ss ? sessionStorage : localStorage).getItem(k) || ''; } catch (e) { return ''; } }
   function put(k, v, ss) { try { var st = ss ? sessionStorage : localStorage; v ? st.setItem(k, v) : st.removeItem(k); } catch (e) {} }
   function tel(p) { var d = String(p || '').replace(/\D/g, ''); return d.length === 10 ? '+1' + d : d; }
   function call(d) {
     if (!API) return Promise.resolve({ error: 'This site is not connected yet.' });
-    d.trackCode = S.track; d.unitCode = S.ucode; d.idToken = S.token;
+    d.trackCode = S.track; d.unitCode = S.ucode; d.idToken = S.token; d.famCode = S.fam; d.leadCode = S.lead;   // family/lead codes: group volunteers and their leads
     return fetch(API, { method: 'POST', body: JSON.stringify(d) }).then(function (r) { return r.json(); }).catch(function () { return { error: 'Could not reach the server. Retrying…', net: true }; });
   }
   function now() { return Date.now() + S.skew; }
@@ -71,7 +71,7 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') + '<header><img class="logo" src="img/logo-160.png" alt="" width="72" height="72"><div class="eyebrow">' + esc(b.event || C.EVENT) + ' · ' + (MODE === 'track' ? 'Unit tracker' : 'Unit board') +
       '</div><h1>' + esc(MODE === 'track' ? 'Tracker' : 'Live board') + ' <span class="bclock" id="clk">' + clock(now()) + '</span></h1><div class="hsub">' + esc(sub || '') + '</div></header>';
   }
-  function footer() { return '<footer>' + (MODE === 'track' ? '<a href="board.html">Live board</a>' : '<a href="track.html">Tracker</a>') + ' · <a href="./">Volunteer signup</a>' + (S.track || S.token ? ' · <button class="link" data-act="out">Sign out</button>' : '') + ' · <button class="link" data-theme-toggle>Theme: ' + (window.sosTheme ? sosTheme.label() : 'Auto') + '</button><span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>'; }
+  function footer() { return '<footer>' + (MODE === 'track' ? (S.b && !S.b.me.view ? '' : '<a href="board.html">Live board</a> · ') : '<a href="track.html">Tracker</a> · ') + '<a href="./">Volunteer signup</a>' + (S.track || S.token ? ' · <button class="link" data-act="out">Sign out</button>' : '') + ' · <button class="link" data-theme-toggle>Theme: ' + (window.sosTheme ? sosTheme.label() : 'Auto') + '</button><span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>'; }
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
   function renderSignIn() {
     var gid = (S.cfg && S.cfg.googleClientId) || C.GOOGLE_CLIENT_ID;
@@ -107,8 +107,9 @@
   // ---------- tracker
   function renderTrack() {
     var b = S.b, me = b.me;
-    if (!me.steps.length) { app.innerHTML = header(me.name) + '<div class="card"><p class="muted">Your account can see the board but can\'t update steps.</p><a class="cbtn alt" href="board.html">Open the live board</a></div>' + footer(); return; }
-    var html = header(me.name + ' · can update ' + (me.steps.length === b.steps.length ? 'every step' : me.steps.length + ' step' + (me.steps.length > 1 ? 's' : ''))) + banner();
+    if (!me.steps.length) { app.innerHTML = header(me.name) + '<div class="card"><p class="muted">' + esc(me.note || (me.view ? 'Your account can see the board but can\'t update steps.' : 'Nothing to update right now.')) + '</p>' + (me.view ? '<a class="cbtn alt" href="board.html">Open the live board</a>' : '') + '</div>' + escalate(me) + footer(); return; }
+    var html = header(me.name + ' · can update ' + (me.steps.length === b.steps.length ? 'every step' : me.steps.length + ' step' + (me.steps.length > 1 ? 's' : '')) + (me.scope && b.units.length === 1 ? ' for ' + b.units[0].name : '')) + banner() + (me.note ? '<div class="banner warn">' + esc(me.note) + '</div>' : '');
+    if (me.scope && b.units.length === 1 && !S.unit) S.unit = b.units[0].id;
     if (S.undo) html += '<div class="banner ok">' + esc(S.undo.text) + ' <button class="link" data-act="undo" data-id="' + esc(S.undo.logId) + '">Undo</button></div>';
     html += '<div class="card"><label for="unitsel">Unit</label><select id="unitsel"><option value="">Pick a unit…</option>' + b.units.map(function (u) {
       var st = status(u), cur = current(u, ['Guard', 'Props', 'Together']);
@@ -120,12 +121,18 @@
       html += '<div class="card"><h2>' + esc(u.name) + (u.perform ? ' · perform ' + esc(hm(u.perform)) : '') + '</h2>' + (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
         sections(b.steps).map(function (sec) {
           return '<div class="trk"><div class="kicker">' + esc(sec.label) + '</div>' + sec.list.map(function (s) {
-            var d = u.done[s.id], can = me.steps.indexOf(s.id) >= 0;
+            var d = u.done[s.id], can = me.steps.indexOf(s.id) >= 0 && (!me.scope || me.scope[s.id] === 'all' || (me.scope[s.id] || []).indexOf(u.id) >= 0);
             return '<button class="stepbtn' + (d ? ' done' : '') + '" data-act="mark" data-step="' + esc(s.id) + '"' + (can && !d ? '' : ' disabled') + '><span>' + esc(s.name) + '</span><span class="sm2">' + (d ? '✓ ' + esc(clock(d.at)) + (d.by ? ' · ' + esc(d.by) : '') : can ? 'Tap when it happens' : '') + '</span></button>';
           }).join('') + '</div>';
         }).join('') + '</div>';
     }
-    app.innerHTML = html + footer();
+    app.innerHTML = html + escalate(me) + footer();
+  }
+  /* Who to go to: a group member's lead, else the Director escalation text. Never a director's number. */
+  function escalate(me) {
+    var e = me && me.escalate; if (!e) return '';
+    if (e.name) return '<div class="card"><p class="muted" style="margin:0">Questions or problems? Your coordinator: <b>' + esc(e.name) + '</b>' + (e.phone ? ' · <a href="tel:' + tel(e.phone) + '">Call</a> · <a href="sms:' + tel(e.phone) + '">Text</a>' : '') + '</p></div>';
+    return e.text ? '<div class="card"><p class="muted" style="margin:0">' + esc(e.text) + '</p></div>' : '';
   }
 
   function render() { if (!S.b) return renderSignIn(); MODE === 'track' ? renderTrack() : renderBoard(); }
@@ -152,13 +159,14 @@
         load();
       });
     } else if (act === 'undo') { b.disabled = true; call({ action: 'unitUndo', logId: b.getAttribute('data-id') }).then(function (r) { S.undo = null; S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Undone.' }; load(); }); }
-    else if (act === 'out') { put(P + 'sosTrack', ''); put(P + 'sosUnitCode', ''); put(P + 'sosAdminTok', '', true); S.track = S.ucode = S.token = ''; S.b = null; render(); }
+    else if (act === 'out') { put(P + 'sosTrack', ''); put(P + 'sosUnitCode', ''); put(P + 'sosAdminTok', '', true); S.track = S.ucode = S.token = S.fam = S.lead = ''; S.b = null; render(); }
   });
 
   var q = location.search;
   S.track = ((q.match(/[?&]t=([A-Za-z0-9]+)/) || [])[1] || get(P + 'sosTrack')).toUpperCase();
   S.ucode = ((q.match(/[?&]unit=([A-Za-z0-9]+)/) || [])[1] || (S.track ? '' : get(P + 'sosUnitCode'))).toUpperCase();
   S.token = get(P + 'sosAdminTok', true);
+  if (!S.track && !S.ucode && !S.token) { S.fam = get(P + 'sosCode'); S.lead = get(P + 'sosLead'); }   // signed in on the family or point-person page
   if (/[?&](t|unit)=/.test(q)) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
-  call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (S.track || S.ucode || S.token) load(); else render(); });
+  call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (S.track || S.ucode || S.token || S.fam || S.lead) load(); else render(); });
 })();

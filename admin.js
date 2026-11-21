@@ -29,7 +29,7 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
       '<header class="adm"><img class=\"logo\" src=\"img/logo-160.png\" alt=\"SOS Crew – Edgewood Winter Guard\" width=\"72\" height=\"72\"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.canEdit === false ? ' <span class="adminpill spot">' + esc(S.who.role) + '</span>' : ' <span class="adminpill">' + esc(S.who.role || 'Admin') + '</span> <button class="adminpill spottog' + (S.spot ? ' spot' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter ' + (S.spot ? 'on' : 'off') + '</button>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
-        [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+        [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['hat', 'Hat'], ['review', 'Review']].concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
         '<a class="np" href="board.html">Live board</a><a class="np" href="track.html">Unit tracker</a><a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
@@ -126,6 +126,21 @@
       r.rows.map(function (x) { return '<tr><td><button class="link" data-act="openfam" data-fid="' + esc(x.familyId) + '">' + esc(x.family) + '</button></td><td>' + esc(x.who + (x.group ? ' (' + x.group + ')' : '')) + '</td><td>' + x.owed + '</td><td>' + x.signed + '</td><td>' + x.worked + '</td><td><b>' + x.gap + '</b></td>' + (x.fee !== '' ? '<td>$' + x.fee + '</td>' : '') + '</tr>'; }).join('') +
       '</tbody></table></div><p class="muted">' + r.rows.length + ' line(s).</p></div>';
   }
+  // ---------- name in the hat: candidates for Assigned spots
+  function renderHat() {
+    var h = S.hat; if (!h) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var ro = S.who.canEdit === false || S.spot;
+    return '<div class="card"><h2>Name in the hat</h2><p class="muted">People who offered to take a spot the coordinators fill. ' + (h.open ? 'Open' + (h.closes ? ' until ' + esc(h.closes) : '') : 'Closed') + ' (Settings › Name in the hat / Hat closes). Placing someone is a normal signup; when the spot fills, everyone else still pending is emailed that they weren\'t picked.</p></div>' +
+      (h.shifts.length ? h.shifts.map(function (x) {
+        var full = x.filled >= x.spots, pend = x.people.filter(function (p) { return p.status === 'Pending'; }).length;
+        return '<div class="card"><h2>' + esc(x.station) + ' · ' + esc(x.date + ' ' + x.label) + '</h2><div class="whosub">' + x.filled + ' of ' + x.spots + ' filled · ' + pend + ' pending</div>' +
+          x.people.map(function (p) {
+            var st = p.status === 'Pending' ? (ro || full ? '' : '<button class="chk w" data-act="hatplace" data-id="' + esc(p.hatId) + '">Place</button>') : '<span class="pill ' + (p.status === 'Placed' ? 'done' : 'tbd') + '">' + esc(p.status) + '</span>';
+            return '<div class="status-line"><div><div class="who">' + esc(p.name) + ' <span class="muted">' + esc(p.type === 'Student' ? p.group : p.type) + '</span></div><div class="whosub">' + esc(/family$/i.test(p.family) ? p.family : p.family + ' family') + ' · ' + (p.familyShort == null ? 'shift counts not set' : p.familyShort ? 'still short ' + p.familyShort : 'covered') + '</div>' + (p.note ? '<div class="whosub">“' + esc(p.note) + '”</div>' : '') + '</div><div class="acts">' + st + '</div></div>';
+          }).join('') + (pend && !ro ? '<div class="w" style="margin-top:8px"><button class="sm ghost" data-act="hatclose" data-id="' + esc(x.shiftId) + '">Close: tell the rest they weren\'t picked</button></div>' : '') + '</div>';
+      }).join('') : '<div class="card"><p class="muted">No names in yet.</p></div>');
+  }
+  function loadHat() { return call({ action: 'adminHat' }).then(function (r) { if (r.error) flash('err', r.error); else S.hat = r; render(); }); }
   function renderReview() {
     var f = S.flags; if (!f) return '<div class="card"><p class="muted">Loading…</p></div>';
     return '<div class="card"><h2>Families to review · ' + f.families.length + '</h2><p class="muted">Self-registered families, and possible duplicates (a student already on another family) first.</p>' +
@@ -133,7 +148,7 @@
   }
 
   // ---------- setup: shifts, stations, days, point people
-  var WHO = ['Anyone', 'HS & adults', 'Adults', 'Assigned'], STATUS = ['Draft', 'Final', 'Closed'];
+  var WHO = ['Anyone', 'HS & adults', 'HS students', 'Adults', 'Assigned'], STATUS = ['Draft', 'Final', 'Closed'];
   function opt(list, sel) { return list.map(function (x) { return '<option' + (x === sel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); }
   function toMin(t) { var p = String(t).split(':'); return +p[0] * 60 + +p[1]; }
   function renderSetup() {
@@ -156,7 +171,7 @@
     // shifts by station
     var byStation = {}; dayShifts.forEach(function (s) { (byStation[s.station] = byStation[s.station] || []).push(s); });
     Object.keys(byStation).sort().forEach(function (st) {
-      var leads = u.leads.filter(function (l) { return l.station.toLowerCase() === st.toLowerCase(); });
+      var leads = u.leads.concat((u.derivedLeads || []).map(function (l) { return { name: l.name + ' – placed', station: l.station, day: '' }; })).filter(function (l) { return l.station.toLowerCase() === st.toLowerCase(); });
       var pl = (u.posts || {})[st] || [];
       html += '<div class="card"><h2>' + esc(st) + '</h2><div class="whosub">Posts: ' + (pl.length ? pl.map(function (x) { return '<span class="pill tbd">' + esc(x) + ' <button class="link" data-act="postdel" data-st="' + esc(st) + '" data-post="' + esc(x) + '" title="Remove">×</button></span>'; }).join(' ') : 'none') +
         ' · <button class="link" data-act="postadd" data-st="' + esc(st) + '">+ post</button></div><div class="whosub">Point person: ' + (leads.length ? leads.map(function (l) { return esc(l.name + (l.day ? ' (' + l.day + ')' : '')); }).join(', ') : 'none yet') + ' · <button class="link" data-act="leadnew" data-st="' + esc(st) + '">+ point person</button></div>' +
@@ -173,7 +188,7 @@
     html += '<div class="card" id="leadsCard"><h2>Point people</h2>' + (u.leads.length ? u.leads.map(function (l) {
       if (S.ledit === l.row) return leadForm(l);
       return '<div class="status-line"><div><div class="who">' + esc(l.name) + ' · ' + esc(l.station + (l.day ? ' (' + l.day + ')' : '')) + '</div><div class="whosub">' + esc([l.phone, l.email].filter(String).join(' · ') || 'no phone or email') + '</div></div><div class="acts"><button class="chk" data-act="leadedit" data-row="' + l.row + '">Edit</button>' + (l.email ? '<button class="chk" data-act="leademail" data-row="' + l.row + '">Email link</button>' : '') + '<button class="chk ns" data-act="leaddel" data-row="' + l.row + '" data-name="' + esc(l.name) + '">Remove</button></div></div>';
-    }).join('') : '<p class="muted">None yet.</p>') + (S.ledit === 'new' ? leadForm({ row: '', station: S.lstation || '', day: '', name: '', phone: '', email: '' }) : '<div style="margin-top:10px"><button class="sm ghost" data-act="leadnew">+ Add a point person</button></div>') + '</div>';
+    }).join('') : '<p class="muted">None yet.</p>') + ((u.derivedLeads || []).length ? '<div class="whosub" style="margin-top:8px"><b>From placed signups</b> (Groups tab › Lead station): ' + esc(u.derivedLeads.map(function (l) { return l.name + ' · ' + l.group + ' (' + l.day + ')'; }).join('; ')) + '. They sign in to the point-person page with their family code.</div>' : '') + (S.ledit === 'new' ? leadForm({ row: '', station: S.lstation || '', day: '', name: '', phone: '', email: '' }) : '<div style="margin-top:10px"><button class="sm ghost" data-act="leadnew">+ Add a point person</button></div>') + '</div>';
     return html;
   }
   function leadForm(l) {
@@ -260,7 +275,7 @@
 
   function render() {
     if (!S.who) return renderSignIn();
-    var body = S.view === 'units' ? renderUnits() : S.view === 'access' ? renderAccess() + trackersCard() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
+    var body = S.view === 'units' ? renderUnits() : S.view === 'access' ? renderAccess() + trackersCard() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : S.view === 'hat' ? renderHat() : renderGrid();
     var ro = S.who.canEdit === false || S.spot;
     app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.canEdit === false ? 'View only. As ' + esc(S.who.role) + ' you see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Tap SPOTTER ON in the title to edit again.') + '</div>' : '') + banner() + body + footer();
     if (ro) Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
@@ -295,7 +310,7 @@
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'); S.msg = null;
-    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'units') loadUnits(); else if (S.view === 'access') { loadAccess(); loadUnits(); } else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'grid') loadDay(); else render(); }
+    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'units') loadUnits(); else if (S.view === 'access') { loadAccess(); loadUnits(); } else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'hat') loadHat(); else if (S.view === 'grid') loadDay(); else render(); }
     else if (act === 'day') { S.cell = ''; S.addHits = null; loadDay(b.getAttribute('data-date')); }
     else if (act === 'cell') { S.cell = S.cell === b.getAttribute('data-id') ? '' : b.getAttribute('data-id'); S.addHits = null; S.addQ = ''; render(); var p = document.getElementById('panel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     else if (act === 'addsearch') { S.addQ = document.getElementById('addq').value; call({ action: 'adminSearch', q: S.addQ }).then(function (r) { S.addHits = r.people || []; render(); }); }
@@ -313,6 +328,8 @@
     }
     else if (act === 'famsearch') { S.famQ = document.getElementById('famq').value; call({ action: 'adminSearch', q: S.famQ }).then(function (r) { S.famHits = r.people || []; render(); }); }
     else if (act === 'openfam') loadFam(b.getAttribute('data-fid'));
+    else if (act === 'hatplace') { b.disabled = true; call({ action: 'adminHatPlace', hatId: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || ('Placed.' + (r.notPicked ? ' ' + r.notPicked + ' other(s) emailed that they weren\'t picked.' : ''))); loadHat(); }); }
+    else if (act === 'hatclose') { if (!confirm('Mark everyone still pending on this spot as not picked and email them?')) return; b.disabled = true; call({ action: 'adminHatClose', shiftId: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || (r.notPicked + ' emailed.')); loadHat(); }); }
     else if (act === 'resend') { b.disabled = true; call({ action: 'adminSendCode', familyId: b.getAttribute('data-fid') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
     else if (act === 'which') { S.which = b.getAttribute('data-w'); loadShort(); }
     else if (act === 'csv') { call({ action: 'adminShortCsv', which: S.which }).then(function (r) { if (r.error) { flash('err', r.error); return render(); } var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([r.csv], { type: 'text/csv' })); a.download = 'sos-crew-short-' + S.which + '.csv'; document.body.appendChild(a); a.click(); a.remove(); }); }

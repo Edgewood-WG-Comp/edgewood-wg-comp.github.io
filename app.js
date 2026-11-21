@@ -113,14 +113,15 @@
     }).join('') + '</div>';
   }
   function mineCard() {
-    var m = S.fam.mine || [];
-    if (!m.length) return '';
+    var m = S.fam.mine || [], hat = S.fam.hat || [];
+    if (!m.length && !hat.length) return '';
+    var hl = hat.map(function (x) { var dp = dayParts(x.date); return '<li><div><div class="who">' + esc(x.person) + ' · ' + esc(x.station) + ' <span class="pill tbd">' + (x.status === 'Pending' ? 'Name in – pending' : 'Not picked') + '</span></div><div class="whosub">' + esc(dp.dow + ' ' + dp.md + ', ' + x.label) + (x.status === 'Pending' ? ' · doesn\'t count toward your shifts unless you\'re placed' : ' · thanks for offering') + '</div></div>' + (x.status === 'Pending' ? '<button class="sm ghost" data-act="hatout" data-id="' + esc(x.hatId) + '">Take name out</button>' : '') + '</li>'; }).join('');
     return '<div class="card mine"><h2>Your shifts</h2><ul>' + m.map(function (x) {
       var dp = dayParts(x.date), act = x.status === 'Signed up' ? '<button class="sm ghost" data-act="' + (x.extraId ? 'xcancel' : 'cancel') + '" data-id="' + esc(x.extraId || x.signupId) + '">Cancel</button>' : '<span class="pill done">' + esc(x.status) + '</span>';
       var lead = '';
       if (x.lead) lead = '<div class="leadline">Point person: <b>' + esc(x.lead.name) + '</b>' + (x.lead.phone ? ' <a class="cbtn" href="tel:' + tel(x.lead.phone) + '">Call</a><a class="cbtn" href="' + smsHref([x.lead.phone], 'Hi ' + x.lead.name + ', this is ' + x.person + ' (' + x.station + ', ' + dp.dow + ' ' + x.label + '). ') + '">Text</a>' : '<div class="whosub">' + esc(x.lead.opens || '') + '</div>') + '</div>';
       return '<li><div><div class="who">' + esc(x.person) + ' · ' + esc(x.station) + (x.post ? ' <span class="pill tbd">' + esc(x.post) + '</span>' : '') + '</div><div class="whosub">' + esc(dp.dow + ' ' + dp.md + ', ' + x.label) + '</div>' + lead + '</div>' + act + '</li>';
-    }).join('') + '</ul></div>';
+    }).join('') + hl + '</ul></div>';
   }
   function calCard() {
     var c = S.fam.calendar; if (!c || !(S.fam.mine || []).length) return '';
@@ -140,15 +141,20 @@
     var full = s.open <= 0, yours = s.yours.map(function (y) { return nameOf(y.person); }).join(', ');
     var btn = '';
     if (S.fam.open && !full && s.can.length) btn = '<button class="sm" data-act="pick" data-id="' + esc(s.id) + '">Sign up</button>';
+    else if (S.fam.hatOpen && s.hatFor && s.hatFor.length) btn = '<button class="sm ghost" data-act="hatpick" data-id="' + esc(s.id) + '">Put my name in</button>';
     else if ((!full || s.who === 'Assigned') && s.reason && !s.can.length) btn = '<span class="pill tbd">' + esc(s.reason) + '</span>';
     var picker = S.picking === s.id ? '<div class="picker"><div class="muted" style="margin-bottom:6px">Who is working this?</div><div class="row">' +
       s.can.map(function (pid) { return '<button class="sm" data-act="claim" data-id="' + esc(s.id) + '" data-pid="' + esc(pid) + '">' + esc(nameOf(pid)) + '</button>'; }).join('') +
       '<button class="sm ghost" data-act="pick" data-id="">Never mind</button></div></div>' : '';
+    if (S.hatPicking === s.id) picker = '<div class="picker"><div class="muted" style="margin-bottom:6px">The coordinators fill this spot. Putting a name in doesn\'t hold it or count toward your shifts until they place you; we\'ll let you know either way.</div>' +
+      '<label for="hatnote">Anything they should know? (optional)</label><input id="hatnote" maxlength="300" placeholder="e.g. I did this last year">' +
+      '<div class="row" style="margin-top:8px">' + s.hatFor.map(function (pid) { return '<button class="sm" data-act="hatadd" data-id="' + esc(s.id) + '" data-pid="' + esc(pid) + '">' + esc(nameOf(pid)) + '</button>'; }).join('') +
+      '<button class="sm ghost" data-act="hatpick" data-id="">Never mind</button></div></div>';
     if (s.who === 'Assigned') full = true;
     return '<div class="st' + (full ? ' full' : '') + '"><div><div class="nm">' + esc(s.station) + '</div><div class="meta">' +
       (s.who === 'Assigned' ? 'Filled by the coordinators' : full ? '<span class="open zero">Full</span>' : '<span class="open">' + s.open + ' of ' + s.spots + ' open</span>') +
       (s.counts !== 1 ? ' · counts as ' + s.counts : '') + (s.notes ? ' · ' + esc(s.notes) : '') + '</div>' +
-      (yours ? '<div class="yours">You: ' + esc(yours) + '</div>' : '') + (s.names && s.names.length ? '<div class="names">' + esc(s.names.join(', ')) + '</div>' : '') + '</div>' + btn + '</div>' + picker;
+      (yours ? '<div class="yours">You: ' + esc(yours) + '</div>' : '') + (s.hatIn && s.hatIn.length ? '<div class="yours">Name in: ' + esc(s.hatIn.map(function (h) { return nameOf(h.person); }).join(', ')) + ' · pending</div>' : '') + (s.names && s.names.length ? '<div class="names">' + esc(s.names.join(', ')) + '</div>' : '') + '</div>' + btn + '</div>' + picker;
   }
   function keep(s) {
     if (S.onlyOpen && (s.open <= 0 || s.who === 'Assigned') && !s.yours.length) return false;
@@ -278,7 +284,10 @@
     else if (act === 'fchip') { var st = b.getAttribute('data-st'); if (S.filter[st]) delete S.filter[st]; else S.filter[st] = 1; saveView(); render(); }
     else if (act === 'fclear') { S.filter = {}; S.onlyOpen = false; saveView(); render(); }
     else if (act === 'expand' || act === 'collapse') { S.day.blocks.forEach(function (bl) { S.open[S.day.date + '|' + bl.start] = act === 'expand'; }); render(); }
-    else if (act === 'pick') { S.picking = id || ''; render(); }
+    else if (act === 'pick') { S.picking = id || ''; S.hatPicking = ''; render(); }
+    else if (act === 'hatpick') { S.hatPicking = id || ''; S.picking = ''; render(); }
+    else if (act === 'hatadd') { var hp = b.getAttribute('data-pid'), nt = (document.getElementById('hatnote') || {}).value || ''; lock(); call({ action: 'hatAdd', code: S.code, shiftId: id, personId: hp, note: nt }).then(function (r) { S.hatPicking = ''; if (r.error) { flash('err', r.error); return refresh(); } return refresh(nameOf(hp) + '\'s name is in. The coordinators will let you know.'); }); }
+    else if (act === 'hatout') { if (!confirm('Take this name out?')) return; lock(); call({ action: 'hatWithdraw', code: S.code, hatId: id }).then(function (r) { if (r.error) flash('err', r.error); return refresh(r.error ? '' : 'Name taken out.'); }); }
     else if (act === 'claim') { lock(); var pid = b.getAttribute('data-pid'); call({ action: 'claim', code: S.code, shiftId: id, personId: pid }).then(function (r) { S.picking = ''; if (r.error) { flash('err', r.error); return refresh(); } return refresh(nameOf(pid) + ' is signed up. Thank you!'); }); }
     else if (act === 'cancel' || act === 'xcancel') {
       if (!confirm('Cancel this shift?')) return; lock();
