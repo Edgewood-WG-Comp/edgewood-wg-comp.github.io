@@ -45,11 +45,13 @@
       var sub = [p.type, p.group, p.phone ? p.phone + (p.fromFamily ? ' (family)' : '') : 'no phone on file'].filter(String).join(' · ');
       var inOn = p.status === 'Checked in', nsOn = p.status === 'No-show';
       return '<div class="person"><div><div class="who">' + esc(p.name) + (p.post && (S.data.lead.viewOnly || (S.data.lead.all && get('sosSpotMode', true) !== '0') || !(S.data.posts || {})[slot.station]) ? ' <span class="pill tbd">' + esc(p.post) + '</span>' : '') + '</div><div class="whosub">' + esc(sub) + '</div>' + postSel(p, slot.station) + '</div><div class="acts">' +
-        (p.phone ? '<a class="cbtn" href="tel:' + tel(p.phone) + '">Call</a><a class="cbtn alt" href="' + smsHref([p.phone], S.body) + '">Text</a>' : '') +
+        (p.phone ? '<a class="cbtn" href="tel:' + tel(p.phone) + '">Call</a><a class="cbtn alt solo" href="' + smsHref([p.phone], greet(p.name, slot.station)) + '">Text</a>' : '') +
         '<button class="chk' + (inOn ? ' on' : '') + '" data-act="mark" data-id="' + esc(p.signupId) + '" data-mark="' + (inOn ? 'undo' : 'in') + '">' + (inOn ? 'In ✓' : 'Check in') + '</button>' +
         '<button class="chk ns' + (nsOn ? ' on' : '') + '" data-act="mark" data-id="' + esc(p.signupId) + '" data-mark="' + (nsOn ? 'undo' : 'noshow') + '">No-show</button></div></div>';
     }).join('');
   }
+  /** One-on-one texts start with who they're to and who's sending, so a reply makes sense even without saved contacts. */
+  function greet(to, station) { var d = S.data; return 'Hi ' + to + ', this is ' + d.lead.name + (d.lead.all ? ' with ' + (d.app || 'SOS Crew') : ', ' + station + ' point person') + ' for the ' + d.event + '. '; }
   function phonesOf(list) { var m = {}; list.forEach(function (p) { if (p.phone && p.status !== 'No-show') m[p.phone] = 1; }); return Object.keys(m); }
   function textBtn(label, phones) {
     if (!phones.length) return '<span class="muted">' + esc(label) + ': no phones yet</span>';
@@ -88,7 +90,7 @@
       render();
     });
   }
-  app.addEventListener('input', function (e) { if (e.target.id === 'body') { S.body = e.target.value; Array.prototype.forEach.call(app.querySelectorAll('a.cbtn.alt'), function (a) { var m = a.getAttribute('href').match(/addresses=([^&]*)|^sms:([^?]*)/); var ph = (m && (m[1] || m[2]) || '').split(','); a.setAttribute('href', smsHref(ph, S.body)); }); } });
+  app.addEventListener('input', function (e) { if (e.target.id === 'body') { S.body = e.target.value; Array.prototype.forEach.call(app.querySelectorAll('a.cbtn.alt:not(.solo)'), function (a) { var m = a.getAttribute('href').match(/addresses=([^&]*)|^sms:([^?]*)/); var ph = (m && (m[1] || m[2]) || '').split(','); a.setAttribute('href', smsHref(ph, S.body)); }); } });
   app.addEventListener('change', function (e) {
     if (e.target.id === 'stf') { S.station = e.target.value; render(); }
     if (e.target.classList.contains('postsel')) { e.target.disabled = true; call({ action: 'setPost', leadCode: S.code, idToken: S.token, signupId: e.target.getAttribute('data-id'), post: e.target.value }).then(function (r) { if (r.error) S.msg = { kind: 'err', text: r.error }; load(); }); }
