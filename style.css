@@ -145,8 +145,8 @@ header .eyebrow,header h1,header .hsub{padding-right:84px}
 .chipst{border-radius:10px;padding:8px 10px;background:var(--bg)}
 .chipst .cs1{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
 .chipst .cs2{font-weight:700;font-size:14px;margin-top:2px}.chipst .cs3{font-size:12px;color:var(--sub)}
-.chipst.t-guard{background:#EDE9FE}.chipst.t-props{background:#CCFBF1}.chipst.t-together{background:#FEF3C7}
-html.dark .chipst.t-guard{background:#2A1B4D}html.dark .chipst.t-props{background:#0D3330}html.dark .chipst.t-together{background:#3A2A0C}
+.chipst.t-guard{background:#EDE9FE}.chipst.t-props{background:#CCFBF1}.chipst.t-together{background:#FEF3C7}.chipst.t-director{background:#DBEAFE}
+html.dark .chipst.t-guard{background:#2A1B4D}html.dark .chipst.t-props{background:#0D3330}html.dark .chipst.t-together{background:#3A2A0C}html.dark .chipst.t-director{background:#0F2647}
 .ualert{margin-top:8px;font-size:13px;font-weight:700;color:#B91C1C}html.dark .ualert{color:#FCA5A5}
 .trk{margin-top:12px}
 .stepbtn{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:8px;min-height:54px;padding:0 14px;border-radius:12px;font-size:16px;text-align:left}

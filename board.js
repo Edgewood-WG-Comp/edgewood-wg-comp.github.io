@@ -28,23 +28,37 @@
     var best = null; Object.keys(u.done).forEach(function (id) { var s = stepOf(id); if (s && tracks.indexOf(s.track) >= 0 && (!best || s.order > best.s.order)) best = { s: s, at: u.done[id].at, by: u.done[id].by }; });
     return best;
   }
+  var TRACK_LABEL = { Director: 'Director / delegate', Guard: 'Guard', Props: 'Props / tarp', Together: 'Guard + props together' };
+  function tracks() { var t = ['Director', 'Guard', 'Props', 'Together']; S.b.steps.forEach(function (s) { if (t.indexOf(s.track) < 0) t.push(s.track); }); return t; }
+  /* Tracker sections in the order things happen: before (by track), together, after the performance (by track). */
+  function sections(steps) {
+    var tog = steps.filter(function (s) { return s.track === 'Together'; }), first = tog.length ? tog[0].order : Infinity, last = tog.length ? tog[tog.length - 1].order : Infinity, out = [];
+    function add(list, pre) { tracks().forEach(function (tr) { var l = list.filter(function (s) { return s.track === tr; }); if (l.length) out.push({ label: pre + (TRACK_LABEL[tr] || tr), list: l }); }); }
+    add(steps.filter(function (s) { return s.track !== 'Together' && s.order < first; }), '');
+    if (tog.length) out.push({ label: TRACK_LABEL.Together, list: tog });
+    add(steps.filter(function (s) { return s.track !== 'Together' && s.order > last; }), 'After · ');
+    return out;
+  }
   function stepById(id) { return S.b.steps.filter(function (s) { return s.id === id; })[0] || null; }
   function reachedId(u, id) {   // this step, or any later step on the same track or the together track
     var t = stepById(id); if (!t) return false;
     return Object.keys(u.done).some(function (k) { var s = stepOf(k); return s && (s.track === t.track || s.track === 'Together') && s.order >= t.order; });
   }
-  /* Alerts go by step ID (names can be edited): G4 to warm-up, G6 in warm-up, P3 props in holding, P5 props at the meet-up, T1 to the gym, T3 performing, T4 performed. */
+  /* Alerts go by step ID (names can be edited): D1 checked in, G3 to warm-up, G5 in warm-up, P3 props in holding, P5 props at the
+   * meet-up, T1 to the gym, T3 performing, T4 performed, G8 left the building, G9 homeroom clear. */
   function status(u) {
-    var t = now(), g = current(u, ['Guard', 'Together']), p = current(u, ['Props', 'Together']), alerts = [], level = 0;
-    var wu = at(u.warmup), pf = at(u.perform), finished = reachedId(u, 'T4');
+    var t = now(), g = current(u, ['Guard', 'Together']), p = current(u, ['Props', 'Together']), d = current(u, ['Director']), alerts = [], level = 0;
+    var ci = at(u.checkin), wu = at(u.warmup), pf = at(u.perform), finished = reachedId(u, 'T4');
     function flag(due, ok, what, early) { if (!due || ok || finished) return; if (t >= due) { alerts.push(what + ' late'); level = Math.max(level, 2); } else if (t >= due - early * 60000) { alerts.push(what + ' due ' + clock(due)); level = Math.max(level, 1); } }
-    flag(wu && wu - 5 * 60000, reachedId(u, 'G4'), 'Guard to warm-up', 10);
-    flag(wu, reachedId(u, 'G6'), 'Guard in warm-up', 10);
+    flag(ci, !!u.done.D1, 'Director check-in', 10);
+    flag(wu && wu - 5 * 60000, reachedId(u, 'G3'), 'Guard to warm-up', 10);
+    flag(wu, reachedId(u, 'G5'), 'Guard in warm-up', 10);
     flag(wu, reachedId(u, 'P3'), 'Props in holding', 15);
     flag(pf && pf - 10 * 60000, reachedId(u, 'P5'), 'Props at meet-up', 10);
     flag(pf, reachedId(u, 'T1'), 'To the gym', 5);
+    if (u.done.G8 && !u.done.G9) { alerts.push('Guard left – homeroom NOT cleared'); level = 2; }
     var performing = !!u.done.T3 && !finished;
-    return { g: g, p: p, alerts: alerts, level: level, finished: finished, performing: performing };
+    return { g: g, p: p, d: d, alerts: alerts, level: level, finished: finished, performing: performing };
   }
   function chip(cur, label) {
     if (!cur) return '<div class="chipst none"><div class="cs1">' + esc(label) + '</div><div class="cs2">Not yet</div></div>';
@@ -77,13 +91,13 @@
       '<div class="stg hole"><div class="sl">In the hole</div><div class="sv">' + esc(queue[1] ? queue[1].u.name : '—') + '</div></div></div>';
     if (!rows.length) html += '<div class="card"><p class="muted">No units yet. Admins add them on the admin page › Units.</p></div>';
     html += '<div class="units">' + rows.map(function (r) {
-      var u = r.u, st = r.st, cls = st.finished ? 'fin' : st.performing ? 'perf' : st.level === 2 ? 'red' : st.level === 1 ? 'amber' : '';
-      var tog = current(u, ['Together']);
+      var u = r.u, st = r.st, cls = st.level === 2 ? 'red' : st.finished ? 'fin' : st.performing ? 'perf' : st.level === 2 ? 'red' : st.level === 1 ? 'amber' : '';
+      var tog = st.g && st.p && st.g.s === st.p.s ? st.g : null;   // guard and props are together right now
       return '<div class="ucard ' + cls + (me.own === u.id ? ' own' : '') + '"><div class="uh"><div><span class="uo">' + esc(u.order) + '</span> <b class="un">' + esc(u.name) + '</b>' + (u.cls ? ' <span class="muted">' + esc(u.cls) + '</span>' : '') + (me.own === u.id ? ' <span class="pill done">You</span>' : '') + '</div>' +
         '<div class="ut">' + (u.warmup ? 'Warm-up ' + esc(hm(u.warmup)) : '') + (u.perform ? ' · Perform <b>' + esc(hm(u.perform)) + '</b>' : '') + '</div></div>' +
         (tog ? '<div class="chips2">' + chip(tog, 'Unit') + '</div>' : '<div class="chips2">' + chip(st.g, 'Guard') + chip(st.p, 'Props / tarp') + '</div>') +
         (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
-        (u.director && me.kind !== 'director' ? '<div class="whosub">Director: ' + esc(u.director) + (u.phone ? ' · <a href="tel:' + tel(u.phone) + '">Call</a> · <a href="sms:' + tel(u.phone) + '">Text</a>' : '') + '</div>' : '') +
+        (u.director && me.kind !== 'director' ? '<div class="whosub">Director: ' + esc(u.director) + ' · ' + (st.d ? '✓ ' + esc(st.d.s.id === 'D1' ? 'checked in' : st.d.s.name) + ' ' + esc(clock(st.d.at)) : 'not checked in') + (u.phone ? ' · <a href="tel:' + tel(u.phone) + '">Call</a> · <a href="sms:' + tel(u.phone) + '">Text</a>' : '') + '</div>' : '') +
         (me.steps.length && MODE === 'board' ? '<div style="margin-top:6px"><a class="cbtn alt" href="track.html#' + esc(u.id) + '">Update</a></div>' : '') + '</div>';
     }).join('') + '</div>';
     app.innerHTML = html + footer();
@@ -103,9 +117,8 @@
     if (u) {
       var st = status(u);
       html += '<div class="card"><h2>' + esc(u.name) + (u.perform ? ' · perform ' + esc(hm(u.perform)) : '') + '</h2>' + (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
-        ['Guard', 'Props', 'Together'].map(function (tr) {
-          var list = b.steps.filter(function (s) { return s.track === tr; }); if (!list.length) return '';
-          return '<div class="trk"><div class="kicker">' + (tr === 'Together' ? 'Guard + props together' : tr === 'Props' ? 'Props / tarp' : 'Guard') + '</div>' + list.map(function (s) {
+        sections(b.steps).map(function (sec) {
+          return '<div class="trk"><div class="kicker">' + esc(sec.label) + '</div>' + sec.list.map(function (s) {
             var d = u.done[s.id], can = me.steps.indexOf(s.id) >= 0;
             return '<button class="stepbtn' + (d ? ' done' : '') + '" data-act="mark" data-step="' + esc(s.id) + '"' + (can && !d ? '' : ' disabled') + '><span>' + esc(s.name) + '</span><span class="sm2">' + (d ? '✓ ' + esc(clock(d.at)) + (d.by ? ' · ' + esc(d.by) : '') : can ? 'Tap when it happens' : '') + '</span></button>';
           }).join('') + '</div>';

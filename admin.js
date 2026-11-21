@@ -233,7 +233,7 @@
           esc([x.checkin ? 'check-in ' + x.checkin : '', x.warmup ? 'warm-up ' + x.warmup : '', x.perform ? 'perform ' + x.perform : '', x.director, x.phone].filter(String).join(' · ')) + '</div></div>' +
           '<div class="acts"><button class="chk" data-act="ucopy" data-link="' + esc(x.link) + '">Copy director link</button><button class="chk w" data-act="uedit" data-id="' + esc(x.id) + '">Edit</button><button class="chk ns w" data-act="udel" data-id="' + esc(x.id) + '" data-name="' + esc(x.name) + '">Remove</button></div></div>';
       }).join('') + (S.uedit === 'new' ? form(null) : '<div class="w" style="margin-top:10px"><button class="sm ghost" data-act="uedit" data-id="new">+ Add a unit</button></div>') + '</div>' +
-      '<div class="card"><h2>Steps</h2><p class="muted">Rename or add steps on the sheet\'s Steps tab.</p>' + ['Guard', 'Props', 'Together'].map(function (t) { return '<div class="whosub"><b>' + t + ':</b> ' + esc(u.steps.filter(function (s) { return s.track === t; }).map(function (s) { return s.name; }).join(' → ')) + '</div>'; }).join('') + '</div>';
+      '<div class="card"><h2>Steps</h2><p class="muted">Rename or add steps on the sheet\'s Steps tab.</p>' + ['Director', 'Guard', 'Props', 'Together'].filter(function (t) { return u.steps.some(function (s) { return s.track === t; }); }).map(function (t) { return '<div class="whosub"><b>' + t + ':</b> ' + esc(u.steps.filter(function (s) { return s.track === t; }).map(function (s) { return s.name; }).join(' → ')) + '</div>'; }).join('') + '</div>';
   }
   function loadUnits() { return call({ action: 'adminUnits' }).then(function (r) { if (r.error) flash('err', r.error); else S.units = r; render(); }); }
   // trackers (in Access, super admins)
