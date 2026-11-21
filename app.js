@@ -179,6 +179,7 @@
     var dp = S.day && S.day.date ? dayParts(S.day.date) : null;
     var html = header(S.fam.family.name) + banner();
     if (!S.fam.open) html += '<div class="banner info">Signups aren\'t open yet. You can look around; we\'ll email when they open.</div>';
+    if (S.fam.units && (S.fam.units.board || S.fam.units.track)) html += '<div class="card unitlinks"><h2>Contest day</h2><div class="row" style="flex-wrap:wrap">' + (S.fam.units.board ? '<a class="cbtn alt" href="board.html">Live unit board</a>' : '') + (S.fam.units.track ? '<a class="cbtn" href="track.html">Unit tracker</a>' : '') + '</div><p class="muted" style="margin-bottom:0">Sign in there with Google, or use your tracker link.</p></div>';
     html += statusCard() + mineCard();
     if (S.day && S.day.days.length) {
       html += tabs();
