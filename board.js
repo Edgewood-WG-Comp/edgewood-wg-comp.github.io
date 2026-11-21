@@ -28,23 +28,22 @@
     var best = null; Object.keys(u.done).forEach(function (id) { var s = stepOf(id); if (s && tracks.indexOf(s.track) >= 0 && (!best || s.order > best.s.order)) best = { s: s, at: u.done[id].at, by: u.done[id].by }; });
     return best;
   }
-  function reached(u, track, minName) {   // has this track reached the given step (or anything after it, including Together steps)?
-    var target = S.b.steps.filter(function (s) { return s.name === minName; })[0]; if (!target) return false;
-    return Object.keys(u.done).some(function (id) { var s = stepOf(id); return s && (s.track === track || s.track === 'Together') && s.order >= target.order; });
+  function stepById(id) { return S.b.steps.filter(function (s) { return s.id === id; })[0] || null; }
+  function reachedId(u, id) {   // this step, or any later step on the same track or the together track
+    var t = stepById(id); if (!t) return false;
+    return Object.keys(u.done).some(function (k) { var s = stepOf(k); return s && (s.track === t.track || s.track === 'Together') && s.order >= t.order; });
   }
-  function lastOf(track) { var l = S.b.steps.filter(function (s) { return s.track === track; }); return l.length ? l[l.length - 1].name : ''; }
-  function firstTogether(n) { var l = S.b.steps.filter(function (s) { return s.track === 'Together'; }); return l[n] ? l[n].name : ''; }
+  /* Alerts go by step ID (names can be edited): G4 in warm-up, P3 props ready in holding, T1 to the gym, T3 performing, T4 performed. */
   function status(u) {
     var t = now(), g = current(u, ['Guard', 'Together']), p = current(u, ['Props', 'Together']), alerts = [], level = 0;
-    var wu = at(u.warmup), pf = at(u.perform), finished = reached(u, 'Together', firstTogether(2));
+    var wu = at(u.warmup), pf = at(u.perform), finished = reachedId(u, 'T4');
     function flag(due, ok, what, early) { if (!due || ok || finished) return; if (t >= due) { alerts.push(what + ' late'); level = Math.max(level, 2); } else if (t >= due - early * 60000) { alerts.push(what + ' due ' + clock(due)); level = Math.max(level, 1); } }
-    flag(wu, reached(u, 'Guard', lastOf('Guard')), 'Guard at warm-up', 10);
-    flag(wu, reached(u, 'Props', lastOf('Props')), 'Props at warm-up', 10);
-    flag(pf, reached(u, 'Together', firstTogether(0)), 'To performance', 5);
-    var performing = !!u.done[idOf(firstTogether(1))] && !reached(u, 'Together', firstTogether(2));
+    flag(wu, reachedId(u, 'G4'), 'Guard in warm-up', 10);
+    flag(wu, reachedId(u, 'P3'), 'Props in holding', 15);
+    flag(pf, reachedId(u, 'T1'), 'To the gym', 5);
+    var performing = !!u.done.T3 && !finished;
     return { g: g, p: p, alerts: alerts, level: level, finished: finished, performing: performing };
   }
-  function idOf(name) { var s = S.b.steps.filter(function (x) { return x.name === name; })[0]; return s ? s.id : ''; }
   function chip(cur, label) {
     if (!cur) return '<div class="chipst none"><div class="cs1">' + esc(label) + '</div><div class="cs2">Not yet</div></div>';
     return '<div class="chipst t-' + cur.s.track.toLowerCase() + '"><div class="cs1">' + esc(label) + '</div><div class="cs2">' + esc(cur.s.name) + '</div><div class="cs3">' + esc(clock(cur.at)) + ' · ' + esc(ago(cur.at)) + '</div></div>';
