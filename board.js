@@ -33,13 +33,15 @@
     var t = stepById(id); if (!t) return false;
     return Object.keys(u.done).some(function (k) { var s = stepOf(k); return s && (s.track === t.track || s.track === 'Together') && s.order >= t.order; });
   }
-  /* Alerts go by step ID (names can be edited): G4 in warm-up, P3 props ready in holding, T1 to the gym, T3 performing, T4 performed. */
+  /* Alerts go by step ID (names can be edited): G4 to warm-up, G6 in warm-up, P3 props in holding, P5 props at the meet-up, T1 to the gym, T3 performing, T4 performed. */
   function status(u) {
     var t = now(), g = current(u, ['Guard', 'Together']), p = current(u, ['Props', 'Together']), alerts = [], level = 0;
     var wu = at(u.warmup), pf = at(u.perform), finished = reachedId(u, 'T4');
     function flag(due, ok, what, early) { if (!due || ok || finished) return; if (t >= due) { alerts.push(what + ' late'); level = Math.max(level, 2); } else if (t >= due - early * 60000) { alerts.push(what + ' due ' + clock(due)); level = Math.max(level, 1); } }
-    flag(wu, reachedId(u, 'G4'), 'Guard in warm-up', 10);
+    flag(wu && wu - 5 * 60000, reachedId(u, 'G4'), 'Guard to warm-up', 10);
+    flag(wu, reachedId(u, 'G6'), 'Guard in warm-up', 10);
     flag(wu, reachedId(u, 'P3'), 'Props in holding', 15);
+    flag(pf && pf - 10 * 60000, reachedId(u, 'P5'), 'Props at meet-up', 10);
     flag(pf, reachedId(u, 'T1'), 'To the gym', 5);
     var performing = !!u.done.T3 && !finished;
     return { g: g, p: p, alerts: alerts, level: level, finished: finished, performing: performing };
