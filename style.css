@@ -126,3 +126,31 @@ header{position:relative}
 header .logo{position:absolute;right:14px;top:14px;width:72px;height:72px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.25)}
 header .eyebrow,header h1,header .hsub{padding-right:84px}
 @media (min-width:700px){header .logo{width:88px;height:88px}header .eyebrow,header h1,header .hsub{padding-right:100px}}
+/* ---------- unit board + tracker */
+.bclock{font-size:.6em;font-weight:600;color:#99F6E4;margin-left:8px;white-space:nowrap}
+.stage{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:12px 14px}
+.stg{background:var(--card);border-radius:14px;padding:10px 12px;border:1px solid var(--line)}
+.stg .sl{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--sub)}
+.stg .sv{font-size:20px;font-weight:800;margin-top:2px}
+.stg.now{border-color:#7C3AED;box-shadow:0 0 0 2px #7C3AED inset}
+.units{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:10px;margin:12px 14px}
+.ucard{background:var(--card);border-radius:14px;padding:12px;border:1px solid var(--line);border-left:6px solid var(--line)}
+.ucard.amber{border-left-color:#F59E0B}.ucard.red{border-left-color:#DC2626;background:color-mix(in srgb,var(--card) 92%,#DC2626)}
+.ucard.perf{border-left-color:#7C3AED}.ucard.fin{opacity:.55}.ucard.own{box-shadow:0 0 0 2px var(--accent) inset}
+.uh{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:baseline}
+.uo{display:inline-block;min-width:24px;text-align:center;border-radius:99px;background:var(--brand);color:#fff;font-size:12px;font-weight:800;padding:2px 6px}
+.un{font-size:17px}.ut{font-size:13px;color:var(--sub)}
+.chips2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.chips2 .chipst:only-child{grid-column:1/-1}
+.chipst{border-radius:10px;padding:8px 10px;background:var(--bg)}
+.chipst .cs1{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--sub)}
+.chipst .cs2{font-weight:700;font-size:14px;margin-top:2px}.chipst .cs3{font-size:12px;color:var(--sub)}
+.chipst.t-guard{background:#EDE9FE}.chipst.t-props{background:#CCFBF1}.chipst.t-together{background:#FEF3C7}
+html.dark .chipst.t-guard{background:#2A1B4D}html.dark .chipst.t-props{background:#0D3330}html.dark .chipst.t-together{background:#3A2A0C}
+.ualert{margin-top:8px;font-size:13px;font-weight:700;color:#B91C1C}html.dark .ualert{color:#FCA5A5}
+.trk{margin-top:12px}
+.stepbtn{display:flex;justify-content:space-between;align-items:center;width:100%;margin-top:8px;min-height:54px;padding:0 14px;border-radius:12px;font-size:16px;text-align:left}
+.stepbtn .sm2{font-size:12px;font-weight:500;opacity:.85}
+.stepbtn.done{background:#CCFBF1;color:#115E59;opacity:1}html.dark .stepbtn.done{background:#0D3330;color:#5EEAD4}
+.stepbtn:disabled:not(.done){background:var(--bg);color:var(--sub);opacity:1}
+@media (max-width:560px){.stage .sv{font-size:15px}}

@@ -29,8 +29,8 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
       '<header class="adm"><img class=\"logo\" src=\"img/logo-160.png\" alt=\"SOS Crew – Edgewood Winter Guard\" width=\"72\" height=\"72\"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.canEdit === false ? ' <span class="adminpill spot">' + esc(S.who.role) + '</span>' : ' <span class="adminpill">' + esc(S.who.role || 'Admin') + '</span> <button class="adminpill spottog' + (S.spot ? ' spot' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter ' + (S.spot ? 'on' : 'off') + '</button>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
-        [['grid', 'Day grid'], ['setup', 'Setup'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
-        '<a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
+        [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['review', 'Review']].concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+        '<a class="np" href="board.html">Live board</a><a class="np" href="lead.html">Point-person view</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
     return '<footer><a href="./">Volunteer signup</a>' + (S.who ? ' · <button class="link" data-act="out">Sign out</button>' : '') +
@@ -214,9 +214,52 @@
   }
   function loadAccess() { return call({ action: 'adminAccess' }).then(function (r) { if (r.error) flash('err', r.error); else S.access = r; render(); }); }
 
+  // ---------- units (contest-day tracking)
+  function renderUnits() {
+    var u = S.units; if (!u) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var form = function (x) {
+      x = x || {}; var f = function (cls, lab, val, type) { return '<div><label>' + lab + '</label><input class="' + cls + '"' + (type ? ' type="' + type + '"' : '') + ' value="' + esc(val || '') + '"></div>'; };
+      return '<div class="editrow w"><div class="row">' + f('u-n', 'Unit', x.name) + f('u-c', 'Class', x.cls) + f('u-o', 'Order', x.order, 'number') + '</div>' +
+        '<div class="row">' + f('u-ci', 'Check-in', x.checkin, 'time') + f('u-w', 'Warm-up', x.warmup, 'time') + f('u-p', 'Perform', x.perform, 'time') + '</div>' +
+        '<div class="row">' + f('u-d', 'Director', x.director) + f('u-dp', 'Director cell', x.phone, 'tel') + f('u-de', 'Director email', x.email, 'email') + '</div>' +
+        '<label>Notes</label><input class="u-no" value="' + esc(x.notes || '') + '">' +
+        '<div class="row" style="margin-top:8px"><button class="sm" data-act="usave" data-id="' + esc(x.id || '') + '">Save</button><button class="sm ghost" data-act="uedit" data-id="">Cancel</button></div></div>';
+    };
+    return '<div class="card"><h2>Units · ' + u.units.length + '</h2><p class="muted">Order is performance order. Times are on ' + esc(u.date) + '. The live board warns 10 minutes before warm-up and 5 before performance.</p>' +
+      '<div class="row" style="flex-wrap:wrap"><a class="cbtn alt" href="board.html">Open live board</a><a class="cbtn" href="track.html">Open tracker</a></div>' +
+      u.units.map(function (x) {
+        if (S.uedit === x.id) return form(x);
+        return '<div class="status-line"><div><div class="who">' + esc(x.order + '. ' + x.name) + (x.cls ? ' <span class="muted">' + esc(x.cls) + '</span>' : '') + '</div><div class="whosub">' +
+          esc([x.checkin ? 'check-in ' + x.checkin : '', x.warmup ? 'warm-up ' + x.warmup : '', x.perform ? 'perform ' + x.perform : '', x.director, x.phone].filter(String).join(' · ')) + '</div></div>' +
+          '<div class="acts"><button class="chk" data-act="ucopy" data-link="' + esc(x.link) + '">Copy director link</button><button class="chk w" data-act="uedit" data-id="' + esc(x.id) + '">Edit</button><button class="chk ns w" data-act="udel" data-id="' + esc(x.id) + '" data-name="' + esc(x.name) + '">Remove</button></div></div>';
+      }).join('') + (S.uedit === 'new' ? form(null) : '<div class="w" style="margin-top:10px"><button class="sm ghost" data-act="uedit" data-id="new">+ Add a unit</button></div>') + '</div>' +
+      '<div class="card"><h2>Steps</h2><p class="muted">Rename or add steps on the sheet\'s Steps tab.</p>' + ['Guard', 'Props', 'Together'].map(function (t) { return '<div class="whosub"><b>' + t + ':</b> ' + esc(u.steps.filter(function (s) { return s.track === t; }).map(function (s) { return s.name; }).join(' → ')) + '</div>'; }).join('') + '</div>';
+  }
+  function loadUnits() { return call({ action: 'adminUnits' }).then(function (r) { if (r.error) flash('err', r.error); else S.units = r; render(); }); }
+  // trackers (in Access, super admins)
+  function trackersCard() {
+    var u = S.units; if (!u) return '<div class="card"><h2>Unit trackers</h2><p class="muted">Loading…</p></div>';
+    var form = function (t) {
+      t = t || { steps: '' }; var all = /^all$/i.test(t.steps), has = function (id) { return all || new RegExp('(^|,\\s*)' + id + '(,|$)').test(t.steps.replace(/\s/g, '')); };
+      return '<div class="editrow w"><div class="row"><div><label>Name</label><input class="t-n" value="' + esc(t.name || '') + '"></div><div><label>Google email (optional)</label><input class="t-e" type="email" value="' + esc(t.email || '') + '"></div></div>' +
+        '<label class="tog"><input type="checkbox" class="t-v"' + (t.view ? ' checked' : '') + '> Can see the live board</label>' +
+        '<label class="tog"><input type="checkbox" class="t-all"' + (all ? ' checked' : '') + '> Can update every step</label>' +
+        '<div class="chips">' + u.steps.map(function (s) { return '<label class="chip' + (has(s.id) ? ' on' : '') + '"><input type="checkbox" class="t-s" value="' + esc(s.id) + '"' + (has(s.id) ? ' checked' : '') + ' style="display:none">' + esc(s.name) + '</label>'; }).join('') + '</div>' +
+        '<div class="row" style="margin-top:8px"><button class="sm" data-act="tsave" data-row="' + (t.row || '') + '">Save</button><button class="sm ghost" data-act="tedit" data-row="">Cancel</button></div></div>';
+    };
+    var base = location.href.replace(/admin\.html.*$/, '');
+    return '<div class="card"><h2>Unit trackers · ' + u.trackers.length + '</h2><p class="muted">People who aren\'t admins: pick whether they see the live board and which steps they can tap. Admins update everything; view-only roles see the board.</p>' +
+      u.trackers.map(function (t) {
+        if (S.tedit === t.row) return form(t);
+        return '<div class="status-line"><div><div class="who">' + esc(t.name || t.email) + '</div><div class="whosub">' + esc([t.email, t.view ? 'sees board' : 'no board', t.steps ? 'steps: ' + t.steps : 'no steps'].filter(String).join(' · ')) + '</div></div>' +
+          '<div class="acts"><button class="chk" data-act="ucopy" data-link="' + esc(base + 'track.html?t=' + t.code) + '">Copy link</button>' + (t.email ? '<button class="chk w" data-act="temail" data-row="' + t.row + '">Email link</button>' : '') +
+          '<button class="chk w" data-act="tedit" data-row="' + t.row + '">Edit</button><button class="chk ns w" data-act="tdel" data-row="' + t.row + '">Remove</button></div></div>';
+      }).join('') + (S.tedit === 'new' ? form(null) : '<div class="w" style="margin-top:10px"><button class="sm ghost" data-act="tedit" data-row="new">+ Add a tracker</button></div>') + '</div>';
+  }
+
   function render() {
     if (!S.who) return renderSignIn();
-    var body = S.view === 'access' ? renderAccess() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
+    var body = S.view === 'units' ? renderUnits() : S.view === 'access' ? renderAccess() + trackersCard() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : renderGrid();
     var ro = S.who.canEdit === false || S.spot;
     app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.canEdit === false ? 'View only. As ' + esc(S.who.role) + ' you see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Tap SPOTTER ON in the title to edit again.') + '</div>' : '') + banner() + body + footer();
     if (ro) Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
@@ -237,6 +280,7 @@
 
   app.addEventListener('change', function (e) {
     var t = e.target;
+    if (t.classList.contains('t-s')) { t.closest('.chip').classList.toggle('on', t.checked); return; }
     if (t.classList.contains('postsel')) { t.disabled = true; call({ action: 'setPost', signupId: t.getAttribute('data-id'), post: t.value }).then(function (r) { if (r.error) flash('err', r.error); loadDay(); }); return; }
     if (t.classList.contains('plc') && t.value) { var x = t.getAttribute('data-x'), sid = t.value; t.disabled = true;
       call({ action: 'adminPlace', extraId: x, shiftId: sid, overfill: true }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Placed.'); loadDay(); }); }
@@ -250,7 +294,7 @@
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'); S.msg = null;
-    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'access') loadAccess(); else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'grid') loadDay(); else render(); }
+    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'units') loadUnits(); else if (S.view === 'access') { loadAccess(); loadUnits(); } else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'grid') loadDay(); else render(); }
     else if (act === 'day') { S.cell = ''; S.addHits = null; loadDay(b.getAttribute('data-date')); }
     else if (act === 'cell') { S.cell = S.cell === b.getAttribute('data-id') ? '' : b.getAttribute('data-id'); S.addHits = null; S.addQ = ''; render(); var p = document.getElementById('panel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     else if (act === 'addsearch') { S.addQ = document.getElementById('addq').value; call({ action: 'adminSearch', q: S.addQ }).then(function (r) { S.addHits = r.people || []; render(); }); }
@@ -324,6 +368,20 @@
         .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role saved.'); if (!r.error) S.redit = ''; loadAccess(); }); }
     else if (act === 'rdel') { if (!confirm('Remove the role ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
       call({ action: 'adminRoleDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role removed.'); loadAccess(); }); }
+    else if (act === 'uedit') { S.uedit = b.getAttribute('data-id') || ''; render(); }
+    else if (act === 'usave') { var ue = b.closest('.editrow'), uv = function (c) { return ue.querySelector(c).value.trim(); }; b.disabled = true;
+      call({ action: 'adminUnitSave', id: b.getAttribute('data-id') || '', name: uv('.u-n'), cls: uv('.u-c'), order: uv('.u-o'), checkin: uv('.u-ci'), warmup: uv('.u-w'), perform: uv('.u-p'), director: uv('.u-d'), phone: uv('.u-dp'), email: uv('.u-de'), notes: uv('.u-no') })
+        .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Unit saved.'); if (!r.error) S.uedit = ''; loadUnits(); }); }
+    else if (act === 'udel') { if (!confirm('Remove ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
+      call({ action: 'adminUnitDelete', id: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadUnits(); }); }
+    else if (act === 'ucopy') { var lk = b.getAttribute('data-link'); (navigator.clipboard ? navigator.clipboard.writeText(lk) : Promise.reject()).then(function () { b.textContent = 'Copied'; }, function () { prompt('Copy this link:', lk); }); }
+    else if (act === 'tedit') { var tr = b.getAttribute('data-row'); S.tedit = tr === 'new' ? 'new' : tr ? +tr : ''; render(); }
+    else if (act === 'tsave') { var te = b.closest('.editrow'); b.disabled = true;
+      call({ action: 'adminTrackerSave', row: b.getAttribute('data-row') || '', name: te.querySelector('.t-n').value.trim(), email: te.querySelector('.t-e').value.trim(), view: te.querySelector('.t-v').checked, all: te.querySelector('.t-all').checked,
+        steps: Array.prototype.filter.call(te.querySelectorAll('.t-s'), function (x) { return x.checked; }).map(function (x) { return x.value; }) })
+        .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Tracker saved.'); if (!r.error) S.tedit = ''; loadUnits(); }); }
+    else if (act === 'tdel') { if (!confirm('Remove this tracker?')) return; b.disabled = true; call({ action: 'adminTrackerDelete', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadUnits(); }); }
+    else if (act === 'temail') { b.disabled = true; call({ action: 'adminTrackerEmail', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
     else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
   });
 
