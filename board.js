@@ -97,9 +97,10 @@
         '<div class="ut">' + (u.warmup ? 'Warm-up ' + esc(hm(u.warmup)) : '') + (u.perform ? ' · Perform <b>' + esc(hm(u.perform)) + '</b>' : '') + '</div></div>' +
         (tog ? '<div class="chips2">' + chip(tog, 'Unit') + '</div>' : '<div class="chips2">' + chip(st.g, 'Guard') + chip(st.p, 'Props / tarp') + '</div>') +
         (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
-        (u.director && me.kind !== 'director' ? '<div class="whosub">Director: ' + esc(u.director) + ' · ' + (st.d ? '✓ ' + esc(st.d.s.id === 'D1' ? 'checked in' : st.d.s.name) + ' ' + esc(clock(st.d.at)) : 'not checked in') + (u.phone ? ' · <a href="tel:' + tel(u.phone) + '">Call</a> · <a href="sms:' + tel(u.phone) + '">Text</a>' : '') + '</div>' : '') +
+        (me.kind !== 'director' ? '<div class="whosub">Director' + (u.director ? ': ' + esc(u.director) : '') + ' · ' + (st.d ? '✓ ' + esc(st.d.s.id === 'D1' ? 'checked in' : st.d.s.name) + ' ' + esc(clock(st.d.at)) : 'not checked in') + (u.phone ? ' · <a href="tel:' + tel(u.phone) + '">Call</a> · <a href="sms:' + tel(u.phone) + '">Text</a>' : '') + '</div>' : '') +
         (me.steps.length && MODE === 'board' ? '<div style="margin-top:6px"><a class="cbtn alt" href="track.html#' + esc(u.id) + '">Update</a></div>' : '') + '</div>';
     }).join('') + '</div>';
+    if (!me.contact && me.kind !== 'director' && b.escalate) html += '<div class="card"><p class="muted">' + esc(b.escalate) + '</p></div>';
     app.innerHTML = html + footer();
   }
 

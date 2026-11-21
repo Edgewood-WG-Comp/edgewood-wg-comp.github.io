@@ -203,10 +203,11 @@
       if (S.redit === (r ? r.row : 'new')) return '<div class="editrow w"><div class="row"><div><label>Role name</label><input class="y-n" value="' + esc(r ? r.name : '') + '"></div><div><label>Description</label><input class="y-d" value="' + esc(r ? r.description : '') + '"></div></div>' +
         '<label class="tog"><input type="checkbox" class="y-e"' + (r && r.canEdit ? ' checked' : '') + '> Can edit (place people, check in, change shifts…)</label>' +
         '<label class="tog"><input type="checkbox" class="y-m"' + (r && r.canManage ? ' checked' : '') + '> Manage access (this Access page)</label>' +
+        '<label class="tog"><input type="checkbox" class="y-c"' + (r && r.contact ? ' checked' : '') + '> Director contact (sees director phone numbers and emails)</label>' +
         '<div class="row" style="margin-top:8px"><button class="sm" data-act="rsave" data-row="' + (r ? r.row : '') + '">Save</button><button class="sm ghost" data-act="redit" data-row="">Cancel</button></div></div>';
       var n = a.people.filter(function (p) { return p.role.toLowerCase() === r.name.toLowerCase(); }).length;
       return '<div class="status-line"><div><div class="who">' + esc(r.name) + ' <span class="muted">· ' + n + ' ' + (n === 1 ? 'person' : 'people') + '</span></div><div class="whosub">' + esc(r.description) + '</div><div class="whosub">' +
-        (r.canEdit ? 'Can edit' : 'View only') + (r.canManage ? ' · Manages access' : '') + '</div></div><div class="acts"><button class="chk w" data-act="redit" data-row="' + r.row + '">Edit</button>' + (n ? '' : '<button class="chk ns w" data-act="rdel" data-row="' + r.row + '" data-name="' + esc(r.name) + '">Remove</button>') + '</div></div>';
+        (r.canEdit ? 'Can edit' : 'View only') + (r.canManage ? ' · Manages access' : '') + (r.contact ? ' · Director contact' : '') + '</div></div><div class="acts"><button class="chk w" data-act="redit" data-row="' + r.row + '">Edit</button>' + (n ? '' : '<button class="chk ns w" data-act="rdel" data-row="' + r.row + '" data-name="' + esc(r.name) + '">Remove</button>') + '</div></div>';
     };
     return '<div class="card"><h2>Admins and spotters · ' + a.people.length + '</h2><p class="muted">They sign in with Google at admin.html. Changes work on their next page load.</p>' +
       a.people.map(person).join('') + (S.aedit === 'new' ? person(null) : '<div style="margin-top:10px" class="w"><button class="sm ghost" data-act="aedit" data-row="new">+ Add someone</button></div>') + '</div>' +
@@ -221,7 +222,7 @@
       x = x || {}; var f = function (cls, lab, val, type) { return '<div><label>' + lab + '</label><input class="' + cls + '"' + (type ? ' type="' + type + '"' : '') + ' value="' + esc(val || '') + '"></div>'; };
       return '<div class="editrow w"><div class="row">' + f('u-n', 'Unit', x.name) + f('u-c', 'Class', x.cls) + f('u-o', 'Order', x.order, 'number') + '</div>' +
         '<div class="row">' + f('u-ci', 'Check-in', x.checkin, 'time') + f('u-w', 'Warm-up', x.warmup, 'time') + f('u-p', 'Perform', x.perform, 'time') + '</div>' +
-        '<div class="row">' + f('u-d', 'Director', x.director) + f('u-dp', 'Director cell', x.phone, 'tel') + f('u-de', 'Director email', x.email, 'email') + '</div>' +
+        '<div class="row">' + f('u-d', 'Director', x.director) + (u.contact ? f('u-dp', 'Director cell', x.phone, 'tel') + f('u-de', 'Director email', x.email, 'email') : '') + '</div>' + (u.contact ? '' : '<div class="whosub">Director phone and email are hidden for your role.</div>') +
         '<label>Notes</label><input class="u-no" value="' + esc(x.notes || '') + '">' +
         '<div class="row" style="margin-top:8px"><button class="sm" data-act="usave" data-id="' + esc(x.id || '') + '">Save</button><button class="sm ghost" data-act="uedit" data-id="">Cancel</button></div></div>';
     };
@@ -364,13 +365,13 @@
     else if (act === 'adel') { if (!confirm('Remove ' + b.getAttribute('data-email') + '?')) return; b.disabled = true;
       call({ action: 'adminAccessDelete', row: b.getAttribute('data-row'), email: b.getAttribute('data-email') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadAccess(); }); }
     else if (act === 'rsave') { var re = b.closest('.editrow'); b.disabled = true;
-      call({ action: 'adminRoleSave', row: b.getAttribute('data-row') || '', name: re.querySelector('.y-n').value.trim(), description: re.querySelector('.y-d').value.trim(), canEdit: re.querySelector('.y-e').checked, canManage: re.querySelector('.y-m').checked })
+      call({ action: 'adminRoleSave', row: b.getAttribute('data-row') || '', name: re.querySelector('.y-n').value.trim(), description: re.querySelector('.y-d').value.trim(), canEdit: re.querySelector('.y-e').checked, canManage: re.querySelector('.y-m').checked, contact: re.querySelector('.y-c').checked })
         .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role saved.'); if (!r.error) S.redit = ''; loadAccess(); }); }
     else if (act === 'rdel') { if (!confirm('Remove the role ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
       call({ action: 'adminRoleDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role removed.'); loadAccess(); }); }
     else if (act === 'uedit') { S.uedit = b.getAttribute('data-id') || ''; render(); }
     else if (act === 'usave') { var ue = b.closest('.editrow'), uv = function (c) { return ue.querySelector(c).value.trim(); }; b.disabled = true;
-      call({ action: 'adminUnitSave', id: b.getAttribute('data-id') || '', name: uv('.u-n'), cls: uv('.u-c'), order: uv('.u-o'), checkin: uv('.u-ci'), warmup: uv('.u-w'), perform: uv('.u-p'), director: uv('.u-d'), phone: uv('.u-dp'), email: uv('.u-de'), notes: uv('.u-no') })
+      call({ action: 'adminUnitSave', id: b.getAttribute('data-id') || '', name: uv('.u-n'), cls: uv('.u-c'), order: uv('.u-o'), checkin: uv('.u-ci'), warmup: uv('.u-w'), perform: uv('.u-p'), director: uv('.u-d'), phone: S.units.contact ? uv('.u-dp') : '', email: S.units.contact ? uv('.u-de') : '', notes: uv('.u-no') })
         .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Unit saved.'); if (!r.error) S.uedit = ''; loadUnits(); }); }
     else if (act === 'udel') { if (!confirm('Remove ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
       call({ action: 'adminUnitDelete', id: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadUnits(); }); }
