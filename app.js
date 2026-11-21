@@ -30,7 +30,7 @@
   function header(sub) {
     var cf = S.fam || S.cfg || {}, name = cf.app || C.NAME || 'SOS Crew', ev = cf.event || C.EVENT || '';
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
-      '<header><div class="eyebrow">' + esc(ev) + '</div><h1>' + esc(name) + (S.fam && S.fam.admin ? ' <a class="adminpill' + (S.fam.admin.canEdit === false ? ' spot' : '') + '" href="admin.html">' + esc(S.fam.admin.name || 'Admin') + '</a>' : '') + '</h1><div class="hsub">' + esc(sub || 'Volunteer signup') + '</div></header>';
+      '<header><img class=\"logo\" src=\"img/logo-160.png\" alt=\"SOS Crew – Edgewood Winter Guard\" width=\"72\" height=\"72\"><div class="eyebrow">' + esc(ev) + '</div><h1>' + esc(name) + (S.fam && S.fam.admin ? ' <a class="adminpill' + (S.fam.admin.canEdit === false ? ' spot' : '') + '" href="admin.html">' + esc(S.fam.admin.name || 'Admin') + '</a>' : '') + '</h1><div class="hsub">' + esc(sub || 'Volunteer signup') + '</div></header>';
   }
   function footer() {
     var c = ((S.fam || S.cfg || {}).contact) || C.CONTACT;

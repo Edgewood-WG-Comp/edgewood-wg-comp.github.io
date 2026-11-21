@@ -122,3 +122,7 @@ button.adminpill{border:0;cursor:pointer;min-height:0}
 .adminpill.spottog{background:rgba(255,255,255,.16);color:#fff;border:1px dashed rgba(255,255,255,.6)}
 .adminpill.spottog.spot{background:#5EEAD4;color:#134E4A;border:1px solid #5EEAD4}
 html.dark button.adminpill{background:#F5B700;color:#2E1065}html.dark .adminpill.spottog{background:rgba(255,255,255,.12);color:#fff}html.dark .adminpill.spottog.spot{background:#5EEAD4;color:#134E4A}
+header{position:relative}
+header .logo{position:absolute;right:14px;top:14px;width:72px;height:72px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+header .eyebrow,header h1,header .hsub{padding-right:84px}
+@media (min-width:700px){header .logo{width:88px;height:88px}header .eyebrow,header h1,header .hsub{padding-right:100px}}
