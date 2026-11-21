@@ -1,0 +1,16 @@
+WEBVTT
+
+00:00:00.550 --> 00:00:03.330
+Access. Super admins only.
+
+00:00:04.180 --> 00:00:13.490
+Add someone by the Google email they sign in with, and pick their role. There's always at least one super admin, so nobody locks everyone out.
+
+00:00:14.340 --> 00:00:27.730
+Each role is a set of switches: can edit, manage access, and director contact. A spotter sees everything and changes nothing. Need a director liaison? Make a role with just Director contact.
+
+00:00:28.580 --> 00:00:34.590
+Tracker crews get their own link, with just the steps they tap, and whether they can see the board.
+
+00:00:35.440 --> 00:00:38.090
+That's the admin guide.
