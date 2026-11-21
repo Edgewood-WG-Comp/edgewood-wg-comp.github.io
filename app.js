@@ -122,6 +122,14 @@
       return '<li><div><div class="who">' + esc(x.person) + ' · ' + esc(x.station) + (x.post ? ' <span class="pill tbd">' + esc(x.post) + '</span>' : '') + '</div><div class="whosub">' + esc(dp.dow + ' ' + dp.md + ', ' + x.label) + '</div>' + lead + '</div>' + act + '</li>';
     }).join('') + '</ul></div>';
   }
+  function calCard() {
+    var c = S.fam.calendar; if (!c || !(S.fam.mine || []).length) return '';
+    return '<div class="card"><details' + (S.calOpen ? ' open' : '') + ' id="caldet"><summary>Put your family\'s shifts on your calendar</summary>' +
+      '<p class="muted">It updates on its own: new shifts, time changes and cancellations show up without doing anything.</p>' +
+      '<div class="row" style="flex-wrap:wrap"><a class="cbtn alt" href="' + esc(c.webcal) + '">iPhone / Mac / Outlook</a><a class="cbtn" href="' + esc(c.google) + '" target="_blank" rel="noopener">Google Calendar</a>' +
+      '<button class="link" data-act="calcopy" data-link="' + esc(c.https) + '">Copy link</button></div>' +
+      '<p class="muted" style="margin-bottom:0">Reminders come the day before and 2 hours before. On iPhone, if they don\'t show: Settings › Calendar › Accounts › Subscribed Calendars › SOS Crew › turn off <b>Remove Alerts</b>. Google Calendar shows the shifts but doesn\'t send reminders for subscribed calendars, so set your own reminder or check back here.</p></details></div>';
+  }
   function tabs() {
     return '<div class="tabs" role="tablist">' + S.day.days.map(function (d) {
       var dp = dayParts(d.date);
@@ -180,7 +188,7 @@
     var html = header(S.fam.family.name) + banner();
     if (!S.fam.open) html += '<div class="banner info">Signups aren\'t open yet. You can look around; we\'ll email when they open.</div>';
     if (S.fam.units && (S.fam.units.board || S.fam.units.track)) html += '<div class="card unitlinks"><h2>Contest day</h2><div class="row" style="flex-wrap:wrap">' + (S.fam.units.board ? '<a class="cbtn alt" href="board.html">Live unit board</a>' : '') + (S.fam.units.track ? '<a class="cbtn" href="track.html">Unit tracker</a>' : '') + '</div><p class="muted" style="margin-bottom:0">Sign in there with Google, or use your tracker link.</p></div>';
-    html += statusCard() + mineCard();
+    html += statusCard() + mineCard() + calCard();
     if (S.day && S.day.days.length) {
       html += tabs();
       if (S.day.draft) html += '<div class="banner warn">Times are a draft until the contest schedule is final. If your shift moves, we\'ll email you.</div>';
@@ -230,6 +238,7 @@
   app.addEventListener('toggle', function (e) {
     var d = e.target; if (!d || d.tagName !== 'DETAILS') return;
     if (d.id === 'fdet') { S.fopen = d.open; return; }
+    if (d.id === 'caldet') { S.calOpen = d.open; return; }
     var k = d.getAttribute('data-key'); if (k) S.open[k] = d.open;
   }, true);
   app.addEventListener('change', function (e) { if (e.target.id === 'fopen') { S.onlyOpen = e.target.checked; saveView(); render(); } });
@@ -265,6 +274,7 @@
     else if (act === 'sendcode') { lock(); call({ action: 'sendCode', email: document.getElementById('em').value }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
     else if (act === 'signout') { put(KEY, ''); S.code = ''; S.fam = null; S.day = null; try { window.google && google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
     else if (act === 'day') { S.picking = ''; loadDay(b.getAttribute('data-date')).then(render); }
+    else if (act === 'calcopy') { var lk = b.getAttribute('data-link'); (navigator.clipboard ? navigator.clipboard.writeText(lk) : Promise.reject()).then(function () { b.textContent = 'Copied'; }, function () { prompt('Copy this calendar link:', lk); }); }
     else if (act === 'fchip') { var st = b.getAttribute('data-st'); if (S.filter[st]) delete S.filter[st]; else S.filter[st] = 1; saveView(); render(); }
     else if (act === 'fclear') { S.filter = {}; S.onlyOpen = false; saveView(); render(); }
     else if (act === 'expand' || act === 'collapse') { S.day.blocks.forEach(function (bl) { S.open[S.day.date + '|' + bl.start] = act === 'expand'; }); render(); }
