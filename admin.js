@@ -10,6 +10,9 @@
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function getS(k) { try { return sessionStorage.getItem(k) || ''; } catch (e) { return ''; } }
   function putS(k, v) { try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch (e) {} }
+  // Nov 22: the admin sign-in is shared by every tab on this device (warp links open new tabs). It's Google's own ID token, good for about an hour.
+  function getL(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
+  function putL(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
   function label(m) { m = ((m % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mi = m % 60; return (h % 12 || 12) + (mi ? ':' + ('0' + mi).slice(-2) : '') + (h >= 12 ? ' PM' : ' AM'); }
   function short(m) { m = ((m % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mi = m % 60; return (h % 12 || 12) + (mi ? ':' + ('0' + mi).slice(-2) : '') + (h >= 12 ? 'p' : 'a'); }
   function hhmm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
@@ -19,7 +22,7 @@
     d.idToken = S.token;
     return fetch(API, { method: 'POST', body: JSON.stringify(d) }).then(function (r) { return r.json(); })
       .catch(function () { return { error: 'Could not reach the server. Try again.' }; })
-      .then(function (r) { if (r && r.signIn) { S.token = ''; putS(TOK, ''); S.who = null; S.msg = { kind: 'err', text: 'Please sign in again (Google sign-ins last about an hour).' }; } return r; });
+      .then(function (r) { if (r && r.signIn) { if (S.token && !tokExpired(S.token)) putS('sosAutoNo', '1'); S.token = ''; putL(TOK, ''); S.who = null; S.msg = { kind: 'err', text: 'Please sign in again (Google sign-ins last about an hour).' }; } return r; });
   }
   function flash(kind, text) { S.msg = { kind: kind, text: text }; }
 
@@ -48,7 +51,7 @@
     // Nov 22 (Nick): automatic sign-in on a device that has signed in as admin before (and didn't press Sign out). Google still verifies
     // the account and the server still checks the Lists tab. Not after a refusal in this tab, so a non-admin account can't loop.
     var auto = false; try { auto = localStorage.getItem('sosAdminSeen') === '1' && localStorage.getItem('sosAdminOut') !== '1' && !getS('sosAutoNo'); } catch (e) {}
-    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, auto_select: auto, use_fedcm_for_prompt: true, callback: function (r) { S.token = r.credential; putS(TOK, S.token); start(); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); if (auto) { try { google.accounts.id.prompt(); } catch (e) {} } };
+    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, auto_select: auto, use_fedcm_for_prompt: true, callback: function (r) { S.token = r.credential; putL(TOK, S.token); start(); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); if (auto) { try { google.accounts.id.prompt(); } catch (e) {} } };
     if (window.google && google.accounts) draw(); else { var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = draw; document.head.appendChild(sc); }
   }
 
@@ -330,7 +333,7 @@
   }
   function start() {
     call({ action: 'adminWho' }).then(function (r) {
-      if (r.error) { S.who = null; if (S.token && !tokExpired(S.token)) putS('sosAutoNo', '1'); if (S.token && tokExpired(S.token)) { S.token = ''; putS(TOK, ''); } if (!S.msg) flash('err', r.error); return render(); }
+      if (r.error) { S.who = null; if (!S.msg) flash('err', r.error); return render(); }
       try { localStorage.setItem('sosAdminSeen', '1'); localStorage.removeItem('sosAdminOut'); } catch (e) {}
       putS('sosAutoNo', ''); S.who = r; S.msg = null; startView();
     });
@@ -443,9 +446,9 @@
         .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Tracker saved.'); if (!r.error) S.tedit = ''; loadUnits(); }); }
     else if (act === 'tdel') { if (!confirm('Remove this tracker?')) return; b.disabled = true; call({ action: 'adminTrackerDelete', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadUnits(); }); }
     else if (act === 'temail') { b.disabled = true; call({ action: 'adminTrackerEmail', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
-    else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { localStorage.setItem('sosAdminOut', '1'); } catch (x) {} try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }   // Nov 22: Sign out turns automatic sign-in off until the next manual sign-in
+    else if (act === 'out') { S.token = ''; putL(TOK, ''); S.who = null; try { localStorage.setItem('sosAdminOut', '1'); } catch (x) {} try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }   // Nov 22: Sign out turns automatic sign-in off until the next manual sign-in
   });
 
-  S.token = getS(TOK); S.spot = getS('sosSpotMode') !== '0';   // admins start in Spotter mode; tapping the pill turns it off for this tab
+  S.token = getL(TOK) || getS(TOK); if (S.token && tokExpired(S.token)) { S.token = ''; putL(TOK, ''); }   // an old sign-in: go straight to (automatic) sign-in S.spot = getS('sosSpotMode') !== '0';   // admins start in Spotter mode; tapping the pill turns it off for this tab
   call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (S.token) start(); else render(); });
 })();
