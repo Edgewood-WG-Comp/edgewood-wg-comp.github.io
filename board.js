@@ -60,8 +60,9 @@
     return { g: g, p: p, d: d, alerts: alerts, level: level, finished: finished, performing: performing };
   }
   /* Props: 'separate' (tracked on their own), 'none' (no props or tarp), 'guard' (tarp travels with the guard). */
+  function firstDirector() { var d = S.b.steps.filter(function (s) { return s.track === 'Director'; }); return d.length ? d[0].id : ''; }
   function hasProps(u) { return !u.props || u.props === 'separate'; }
-  var PROPS_NOTE = { none: 'No props or tarp', guard: 'Tarp travels with the guard' };
+  var PROPS_NOTE = { none: 'No props or tarp', guard: 'Tarp travels with the guard', separate: 'Props / tarp coming in' };
   /* Steps before this one (same track, or guard and props for a together step) that nobody tapped. */
   function skippedBefore(u, step) {
     var t = stepById(step); if (!t || t.track === 'Director') return [];
@@ -146,7 +147,16 @@
     var a = S.ask; if (!a) return '';
     var names = function (l) { return l.map(function (s) { return s.name; }).join(', '); };
     var body, btns;
-    if (a.props.length) {
+    if (a.kind === 'checkin-props') {
+      body = '<h3>Tell the director</h3><p>Your props/tarp ' + esc(a.info.say) + ' (since ' + esc(clock(a.info.at)) + ').</p>';
+      btns = '<button class="cbtn" data-act="askjust">Got it: check them in</button>';
+    } else if (a.kind === 'checkin-ask') {
+      body = '<h3>Does this guard have props or a tarp?</h3><p>Ask the director while you check them in.</p>';
+      btns = '<button class="cbtn" data-act="askcheck" data-mode="separate">Yes: props and/or tarp coming in</button>' +
+        '<button class="cbtn alt" data-act="askcheck" data-mode="guard">Just a tarp, traveling with the guard</button>' +
+        '<button class="cbtn alt" data-act="askcheck" data-mode="none">No props or tarp</button>' +
+        '<button class="cbtn alt" data-act="askjust">Not sure yet</button>';
+    } else if (a.props.length) {
       body = '<h3>Are the guard and props/tarp moving together?</h3><p>The props/tarp weren\'t marked: <b>' + esc(names(a.props)) + '</b>.' + (a.guard.length ? ' Guard steps not marked: <b>' + esc(names(a.guard)) + '</b>; they\'ll be marked too.' : '') + '</p>';
       btns = '<button class="cbtn" data-act="askall">Yes, together: mark the props steps done</button>' +
         (a.anyProps ? '' : '<button class="cbtn alt" data-act="askmode" data-mode="none">This guard has no props or tarp</button>') +
@@ -157,6 +167,9 @@
     }
     return '<div class="askbg"><div class="askbox" role="dialog" aria-modal="true">' + body + '<div class="askbtns">' + btns + '<button class="link" data-act="askcancel">Cancel</button></div></div></div>';
   }
+  /* Director check-in: tell the director where their props are, or ask whether the guard has props at all. */
+  var PROPS_SAY = { P1: 'have arrived and are being unloaded at the prop door', P2: 'are checked in', P3: 'are in the holding area', P4: 'are on their way to meet the guard', P5: 'are at the meet-up spot', P6: 'are already out of the building' };
+  function propsNow(u) { var c = current(u, ['Props']); return c ? { say: PROPS_SAY[c.s.id] || ('are at: ' + c.s.name), at: c.at } : null; }
   function mark(step, fill, props) {
     var u = S.b.units.filter(function (x) { return x.id === S.unit; })[0];
     S.ask = null; render();
@@ -192,6 +205,11 @@
     var act = b.getAttribute('data-act');
     if (act === 'mark') {
       var step = b.getAttribute('data-step'), un = S.b.units.filter(function (x) { return x.id === S.unit; })[0];
+      if (un && stepById(step) && stepById(step).track === 'Director' && step === firstDirector()) {
+        var pn = propsNow(un);
+        if (pn) { S.ask = { kind: 'checkin-props', step: step, info: pn, props: [], guard: [] }; return render(); }
+        if (!un.propsSet) { S.ask = { kind: 'checkin-ask', step: step, props: [], guard: [] }; return render(); }
+      }
       var sk = un ? skippedBefore(un, step) : [];
       if (sk.length) {
         var t = stepById(step), pr = sk.filter(function (s) { return s.track === 'Props'; });
@@ -203,6 +221,7 @@
       b.disabled = true; mark(step);
     } else if (act === 'askall') { var a1 = S.ask; mark(a1.step, a1.props.concat(a1.guard).map(function (s) { return s.id; })); }
     else if (act === 'askjust') { mark(S.ask.step); }
+    else if (act === 'askcheck') { mark(S.ask.step, [], b.getAttribute('data-mode')); }
     else if (act === 'askmode') { var a2 = S.ask; mark(a2.step, a2.guard.map(function (s) { return s.id; }), b.getAttribute('data-mode')); }
     else if (act === 'askcancel') { S.ask = null; render(); }
     else if (act === 'undo') { b.disabled = true; call({ action: 'unitUndo', logIds: b.getAttribute('data-id').split(',') }).then(function (r) { S.undo = null; S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Undone.' }; load(); }); }

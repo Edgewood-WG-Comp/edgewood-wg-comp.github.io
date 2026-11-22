@@ -259,7 +259,7 @@
       return '<div class="editrow w"><div class="row">' + f('u-n', 'Unit', x.name) + f('u-c', 'Class', x.cls) + f('u-o', 'Order', x.order, 'number') + '</div>' +
         '<div class="row">' + f('u-ci', 'Check-in', x.checkin, 'time') + f('u-w', 'Warm-up', x.warmup, 'time') + f('u-p', 'Perform', x.perform, 'time') + '</div>' +
         '<div class="row">' + f('u-d', 'Director', x.director) + (u.contact ? f('u-dp', 'Director cell', x.phone, 'tel') + f('u-de', 'Director email', x.email, 'email') : '') + '</div>' + (u.contact ? '' : '<div class="whosub">Director phone and email are hidden for your role.</div>') +
-        '<label>Props</label><select class="u-pr">' + [['separate', 'Props & tarp (tracked on their own)'], ['none', 'No props or tarp'], ['guard', 'Tarp travels with the guard']].map(function (o) { return '<option value="' + o[0] + '"' + ((x.props || 'separate') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
+        '<label>Props</label><select class="u-pr">' + [['', 'Not set yet: check-in asks the director'], ['separate', 'Props & tarp (tracked on their own)'], ['none', 'No props or tarp'], ['guard', 'Tarp travels with the guard']].map(function (o) { return '<option value="' + o[0] + '"' + ((x.propsSet ? x.props : '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
         '<label>Notes</label><input class="u-no" value="' + esc(x.notes || '') + '">' +
         '<div class="row" style="margin-top:8px"><button class="sm" data-act="usave" data-id="' + esc(x.id || '') + '">Save</button><button class="sm ghost" data-act="uedit" data-id="">Cancel</button></div></div>';
     };
