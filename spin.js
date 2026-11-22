@@ -85,6 +85,10 @@
       var mine = (api && u.indexOf(api) === 0) || /\/api$/.test(u) || u.indexOf('script.google.com') >= 0;
       if (!mine) return f0.apply(this, arguments);
       var body = opt && typeof opt.body === 'string' ? opt.body : '';
+      if (body && window.sosActAs && sosActAs()) {   // acting as someone: send the admin's sign-in so the server notes it was an admin, on their behalf
+        try { var pre = (window.SOS && window.SOS.ENV === 'LIVE') ? '' : 'sbx_', at = localStorage.getItem(pre + 'sosAdminTok') || sessionStorage.getItem(pre + 'sosAdminTok') || '';
+          var jb = JSON.parse(body); if (jb.action !== 'config' && at) { jb.actingAdmin = at; body = JSON.stringify(jb); opt = Object.assign({}, opt, { body: body }); arguments[1] = opt; } } catch (e) {}
+      }
       var quiet = /"action":"(board|ping)"/.test(body);   // the board's 15-second refresh: no pill
       var self = this, args = arguments, tries = 0;
       if (!quiet) { pending++; if (!timer) timer = setTimeout(function () { timer = null; if (pending) show(); }, 350); }
