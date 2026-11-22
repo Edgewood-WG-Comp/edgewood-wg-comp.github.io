@@ -161,3 +161,16 @@ html.dark .chipst.t-guard{background:#2A1B4D}html.dark .chipst.t-props{backgroun
 .askbox h3{margin:0 0 8px;font-size:19px}.askbox p{margin:0 0 14px;color:var(--sub);font-size:15px}
 .askbtns{display:flex;flex-direction:column;gap:8px}.askbtns .cbtn{width:100%;text-align:center;justify-content:center;border:0;font:inherit;font-weight:700;min-height:46px;cursor:pointer}.askbtns .link{align-self:center;margin-top:4px}
 @media (min-width:700px){.askbg{align-items:center}}
+
+/* tracker list view: a tile per guard */
+.tiles{display:flex;flex-direction:column;gap:10px;margin:0 14px 10px}
+.tile{background:var(--card);border:1px solid var(--line);border-left:6px solid #C4B5FD;border-radius:14px;padding:12px 14px;cursor:pointer}
+.tile.amber{border-left-color:#F59E0B}.tile.red{border-left-color:#DC2626}
+.tile .th{display:flex;justify-content:space-between;gap:8px;align-items:baseline;font-size:17px;margin-bottom:4px}
+.tile .tl{font-size:14px;margin:2px 0}.tile .tlk{display:inline-block;min-width:92px;font-weight:700;color:var(--sub)}
+.tpills{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tpill{border:0;border-radius:999px;background:var(--brand);color:#fff;font:inherit;font-weight:700;padding:10px 16px;min-height:44px;cursor:pointer}
+.tpill.done{background:#CCFBF1;color:#115E59;min-height:0;padding:6px 12px;font-size:13px;cursor:default}
+html.dark .tpill.done{background:#134E4A;color:#CCFBF1}
+.donebox{margin:4px 14px 10px}.donebox summary{cursor:pointer;font-weight:700;color:var(--sub);padding:8px 0}.donebox .tiles{margin:6px 0 0}
+.nav2t{margin:0 14px 8px}

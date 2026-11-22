@@ -119,13 +119,10 @@
     var b = S.b, me = b.me;
     if (!me.steps.length) { app.innerHTML = header(me.name) + '<div class="card"><p class="muted">' + esc(me.note || (me.view ? 'Your account can see the board but can\'t update steps.' : 'Nothing to update right now.')) + '</p>' + (me.view ? '<a class="cbtn alt" href="board.html">Open the live board</a>' : '') + '</div>' + escalate(me) + footer(); return; }
     var html = header(me.name + ' · can update ' + (me.steps.length === b.steps.length ? 'every step' : me.steps.length + ' step' + (me.steps.length > 1 ? 's' : '')) + (me.scope && b.units.length === 1 ? ' for ' + b.units[0].name : '')) + banner() + (me.note ? '<div class="banner warn">' + esc(me.note) + '</div>' : '');
-    if (me.scope && b.units.length === 1 && !S.unit) S.unit = b.units[0].id;
     if (S.undo) html += '<div class="banner ok">' + esc(S.undo.text) + ' <button class="link" data-act="undo" data-id="' + esc(S.undo.logIds.join(',')) + '">Undo</button></div>';
-    html += '<div class="card"><label for="unitsel">Unit</label><select id="unitsel"><option value="">Pick a unit…</option>' + b.units.map(function (u) {
-      var st = status(u), cur = current(u, ['Guard', 'Props', 'Together']);
-      return '<option value="' + esc(u.id) + '"' + (u.id === S.unit ? ' selected' : '') + '>' + esc(u.order + '. ' + u.name + (cur ? ' – ' + cur.s.name : '') + (st.level === 2 ? ' ⚠' : '')) + '</option>';
-    }).join('') + '</select></div>';
     var u = b.units.filter(function (x) { return x.id === S.unit; })[0];
+    if (!u) html += tiles(b, me);
+    else html += '<div class="nav2t"><button class="link" data-act="back">← All guards</button></div>';
     if (u) {
       var st = status(u);
       html += '<div class="card"><h2>' + esc(u.name) + (u.perform ? ' · perform ' + esc(hm(u.perform)) : '') + '</h2>' + (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') + guides(u) + (hasProps(u) ? '' : '<div class="whosub" style="margin:6px 0"><b>' + esc(PROPS_NOTE[u.props]) + '.</b> Props steps not already tapped are hidden for this guard. (Admins can change this under Units.)</div>') +
@@ -137,6 +134,40 @@
         }).join('') + '</div>';
     }
     app.innerHTML = html + ask() + escalate(me) + footer();
+  }
+  /* List view: a tile per guard with where things stand and a pill for the next step this person taps. */
+  function canTap(me, u, id) { return me.steps.indexOf(id) >= 0 && (!me.scope || me.scope[id] === 'all' || (me.scope[id] || []).indexOf(u.id) >= 0); }
+  function nextFor(me, u) {   // per track: the first step this person can tap that hasn't happened yet
+    var out = [];
+    ['Director', 'Guard', 'Props', 'Together'].forEach(function (tr) {
+      if (tr === 'Props' && !hasProps(u)) return;
+      var mine = S.b.steps.filter(function (s) { return s.track === tr && canTap(me, u, s.id); });
+      if (!mine.length) return;
+      var nx = mine.filter(function (s) { return tr === 'Director' ? !u.done[s.id] : !reachedId(u, s.id); })[0];
+      out.push(nx ? { s: nx, todo: true } : { s: mine[mine.length - 1], todo: false, d: u.done[mine[mine.length - 1].id] });
+    });
+    return out;
+  }
+  function line(label, cur, empty) { return '<div class="tl"><span class="tlk">' + label + '</span> ' + (cur ? esc(cur.s.id === firstDirector() ? 'Checked in' : cur.s.name) + ' <span class="muted">' + esc(clock(cur.at)) + '</span>' : '<span class="muted">' + esc(empty) + '</span>') + '</div>'; }
+  function tile(u, me) {
+    var st = status(u), nx = nextFor(me, u), tog = st.g && st.p && st.g.s === st.p.s ? st.g : null;
+    var pills = nx.map(function (n) {
+      return n.todo ? '<button class="tpill" data-act="mark" data-unit="' + esc(u.id) + '" data-step="' + esc(n.s.id) + '">' + esc(n.s.id === firstDirector() ? 'Check in director' : n.s.name) + '</button>'
+        : '<span class="tpill done">✓ ' + esc(n.s.name) + '</span>';
+    }).join('');
+    return '<div class="tile' + (st.level === 2 ? ' red' : st.level === 1 ? ' amber' : '') + '" data-act="open" data-unit="' + esc(u.id) + '">' +
+      '<div class="th"><b>' + esc(u.order + '. ' + u.name) + '</b>' + (u.perform ? '<span class="muted">perform ' + esc(hm(u.perform)) + '</span>' : '') + '</div>' +
+      (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
+      line('Director', st.d, 'not checked in') +
+      (tog ? line('Guard + props', tog, '') : line('Guard', st.g, 'not here yet') + (hasProps(u) ? line('Props', st.p, 'not here yet') : '<div class="tl"><span class="tlk">Props</span> <span class="muted">' + esc(PROPS_NOTE[u.props]) + '</span></div>')) +
+      '<div class="tpills">' + pills + '</div></div>';
+  }
+  function tiles(b, me) {
+    var rows = b.units.map(function (u) { var nx = nextFor(me, u); return { u: u, todo: nx.some(function (n) { return n.todo; }) }; });
+    var todo = rows.filter(function (r) { return r.todo; }), done = rows.filter(function (r) { return !r.todo; });
+    if (!rows.length) return '<div class="card"><p class="muted">No guards yet.</p></div>';
+    return '<div class="tiles">' + todo.map(function (r) { return tile(r.u, me); }).join('') + '</div>' +
+      (done.length ? '<details class="donebox"' + (todo.length ? '' : ' open') + '><summary>Done for you · ' + done.length + '</summary><div class="tiles">' + done.map(function (r) { return tile(r.u, me); }).join('') + '</div></details>' : '');
   }
   /* Homeroom guides on this unit (admins and coordinators get them from the server; nobody else does). */
   function guides(u) {
@@ -170,12 +201,13 @@
   /* Director check-in: tell the director where their props are, or ask whether the guard has props at all. */
   var PROPS_SAY = { P1: 'have arrived and are being unloaded at the prop door', P2: 'are checked in', P3: 'are in the holding area', P4: 'are on their way to meet the guard', P5: 'are at the meet-up spot', P6: 'are already out of the building' };
   function propsNow(u) { var c = current(u, ['Props']); return c ? { say: PROPS_SAY[c.s.id] || ('are at: ' + c.s.name), at: c.at } : null; }
-  function mark(step, fill, props) {
-    var u = S.b.units.filter(function (x) { return x.id === S.unit; })[0];
+  function mark(step, fill, props, uid) {
+    uid = uid || (S.ask && S.ask.unit) || S.unit;
     S.ask = null; render();
-    call({ action: 'unitMark', unitId: S.unit, stepId: step, fill: fill || [], props: props || '' }).then(function (r) {
+    var un = S.b.units.filter(function (x) { return x.id === uid; })[0];
+    call({ action: 'unitMark', unitId: uid, stepId: step, fill: fill || [], props: props || '' }).then(function (r) {
       if (r.error) S.msg = { kind: 'err', text: r.error };
-      else { S.msg = null; var n = (r.logIds || [r.logId]).length; S.undo = { logIds: r.logIds || [r.logId], text: (stepOf(step) || {}).name + ' ✓' + (n > 1 ? ' (and ' + (n - 1) + ' skipped step' + (n > 2 ? 's' : '') + ')' : '') + (props ? ' · ' + PROPS_NOTE[props] : '') }; }
+      else { S.msg = null; var n = (r.logIds || [r.logId]).length; S.undo = { logIds: r.logIds || [r.logId], text: (S.unit ? '' : (un ? un.name + ': ' : '')) + (stepOf(step) || {}).name + ' ✓' + (n > 1 ? ' (and ' + (n - 1) + ' skipped step' + (n > 2 ? 's' : '') + ')' : '') + (props ? ' · ' + PROPS_NOTE[props] : '') }; }
       load();
     });
   }
@@ -204,25 +236,27 @@
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act');
     if (act === 'mark') {
-      var step = b.getAttribute('data-step'), un = S.b.units.filter(function (x) { return x.id === S.unit; })[0];
+      var uid = b.getAttribute('data-unit') || S.unit, step = b.getAttribute('data-step'), un = S.b.units.filter(function (x) { return x.id === uid; })[0];
       if (un && stepById(step) && stepById(step).track === 'Director' && step === firstDirector()) {
         var pn = propsNow(un);
-        if (pn) { S.ask = { kind: 'checkin-props', step: step, info: pn, props: [], guard: [] }; return render(); }
-        if (!un.propsSet) { S.ask = { kind: 'checkin-ask', step: step, props: [], guard: [] }; return render(); }
+        if (pn) { S.ask = { kind: 'checkin-props', unit: uid, step: step, info: pn, props: [], guard: [] }; return render(); }
+        if (!un.propsSet) { S.ask = { kind: 'checkin-ask', unit: uid, step: step, props: [], guard: [] }; return render(); }
       }
       var sk = un ? skippedBefore(un, step) : [];
       if (sk.length) {
         var t = stepById(step), pr = sk.filter(function (s) { return s.track === 'Props'; });
-        S.ask = { step: step, props: t.track === 'Together' ? pr : [], guard: t.track === 'Together' ? sk.filter(function (s) { return s.track !== 'Props'; }) : sk,
+        S.ask = { unit: uid, step: step, props: t.track === 'Together' ? pr : [], guard: t.track === 'Together' ? sk.filter(function (s) { return s.track !== 'Props'; }) : sk,
           anyProps: S.b.steps.some(function (s) { return s.track === 'Props' && un.done[s.id]; }) };
-        if (!S.ask.props.length && !S.ask.guard.length) { S.ask = null; return mark(step); }
+        if (!S.ask.props.length && !S.ask.guard.length) { S.ask = null; return mark(step, null, null, uid); }
         return render();
       }
-      b.disabled = true; mark(step);
+      b.disabled = true; mark(step, null, null, uid);
     } else if (act === 'askall') { var a1 = S.ask; mark(a1.step, a1.props.concat(a1.guard).map(function (s) { return s.id; })); }
     else if (act === 'askjust') { mark(S.ask.step); }
     else if (act === 'askcheck') { mark(S.ask.step, [], b.getAttribute('data-mode')); }
     else if (act === 'askmode') { var a2 = S.ask; mark(a2.step, a2.guard.map(function (s) { return s.id; }), b.getAttribute('data-mode')); }
+    else if (act === 'open') { S.unit = b.getAttribute('data-unit'); S.undo = null; try { history.replaceState(null, '', '#' + S.unit); } catch (x) {} render(); window.scrollTo(0, 0); }
+    else if (act === 'back') { S.unit = ''; S.undo = null; try { history.replaceState(null, '', location.pathname + location.search); } catch (x) {} render(); }
     else if (act === 'askcancel') { S.ask = null; render(); }
     else if (act === 'undo') { b.disabled = true; call({ action: 'unitUndo', logIds: b.getAttribute('data-id').split(',') }).then(function (r) { S.undo = null; S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Undone.' }; load(); }); }
     else if (act === 'out') { put(P + 'sosTrack', ''); put(P + 'sosUnitCode', ''); put(P + 'sosAdminTok', '', true); S.track = S.ucode = S.token = S.fam = S.lead = ''; S.b = null; render(); }
