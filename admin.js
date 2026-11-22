@@ -38,12 +38,17 @@
   }
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
 
+  /** A Google ID token's own expiry (it lasts about an hour). Expired = sign in again (automatically if allowed); not expired = refused. */
+  function tokExpired(t) { try { var p = JSON.parse(atob(String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); return !p.exp || p.exp * 1000 < Date.now() + 30000; } catch (e) { return true; } }
   function renderSignIn() {
     var gid = (S.cfg && S.cfg.googleClientId) || C.GOOGLE_CLIENT_ID;
     app.innerHTML = header() + banner() + '<div class="card"><h2>Admin sign-in</h2><p class="muted">Sign in with a Google account listed on the sheet\'s Lists tab.</p>' +
       (gid ? '<div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div>' : '<p class="muted">Google sign-in isn\'t set up (Settings › Google client ID).</p>') + '</div>' + footer();
     if (!gid) return;
-    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, callback: function (r) { S.token = r.credential; putS(TOK, S.token); start(); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); };
+    // Nov 22 (Nick): automatic sign-in on a device that has signed in as admin before (and didn't press Sign out). Google still verifies
+    // the account and the server still checks the Lists tab. Not after a refusal in this tab, so a non-admin account can't loop.
+    var auto = false; try { auto = localStorage.getItem('sosAdminSeen') === '1' && localStorage.getItem('sosAdminOut') !== '1' && !getS('sosAutoNo'); } catch (e) {}
+    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, auto_select: auto, use_fedcm_for_prompt: true, callback: function (r) { S.token = r.credential; putS(TOK, S.token); start(); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); if (auto) { try { google.accounts.id.prompt(); } catch (e) {} } };
     if (window.google && google.accounts) draw(); else { var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = draw; document.head.appendChild(sc); }
   }
 
@@ -325,8 +330,9 @@
   }
   function start() {
     call({ action: 'adminWho' }).then(function (r) {
-      if (r.error) { S.who = null; if (!S.msg) flash('err', r.error); return render(); }
-      S.who = r; S.msg = null; startView();
+      if (r.error) { S.who = null; if (S.token && !tokExpired(S.token)) putS('sosAutoNo', '1'); if (S.token && tokExpired(S.token)) { S.token = ''; putS(TOK, ''); } if (!S.msg) flash('err', r.error); return render(); }
+      try { localStorage.setItem('sosAdminSeen', '1'); localStorage.removeItem('sosAdminOut'); } catch (e) {}
+      putS('sosAutoNo', ''); S.who = r; S.msg = null; startView();
     });
   }
 
@@ -437,7 +443,7 @@
         .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Tracker saved.'); if (!r.error) S.tedit = ''; loadUnits(); }); }
     else if (act === 'tdel') { if (!confirm('Remove this tracker?')) return; b.disabled = true; call({ action: 'adminTrackerDelete', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadUnits(); }); }
     else if (act === 'temail') { b.disabled = true; call({ action: 'adminTrackerEmail', row: b.getAttribute('data-row') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }
-    else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }
+    else if (act === 'out') { S.token = ''; putS(TOK, ''); S.who = null; try { localStorage.setItem('sosAdminOut', '1'); } catch (x) {} try { google.accounts.id.disableAutoSelect(); } catch (x) {} render(); }   // Nov 22: Sign out turns automatic sign-in off until the next manual sign-in
   });
 
   S.token = getS(TOK); S.spot = getS('sosSpotMode') !== '0';   // admins start in Spotter mode; tapping the pill turns it off for this tab
