@@ -1,5 +1,5 @@
 /* SOS Crew loading spinner: a flag, rifle or sabre (picked at random) spinning while a page or a save is waiting.
- *   sosSpin(text)      → HTML for an inline spinner (used for "Loading…" spots)
+ *   sosSpin(text)      → HTML for an inline spinner (used for "Loading\u2026" spots)
  *   any API call that takes longer than a moment shows a small spinner pill at the bottom of the screen.
  * Copyright (c) 2026 NE Prints & Design, LLC. All rights reserved. */
 (function () {
@@ -26,15 +26,15 @@
     '@keyframes sosSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
     '.sos-flag{animation:sosToss 2.6s ease-in-out infinite}@keyframes sosToss{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}' +
     '#sos-busy{position:fixed;left:50%;bottom:18px;transform:translate(-50%,20px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999;' +
-    'background:#2E1065;color:#fff;border-radius:999px;padding:6px 14px 6px 8px;display:flex;align-items:center;gap:8px;font:600 14px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}' +
-    '#sos-busy.on{opacity:1;transform:translate(-50%,0)}' +
+    'background:#2E1065;color:#fff;border-radius:18px;padding:6px 16px 6px 8px;max-width:min(92vw,420px);display:flex;align-items:center;gap:8px;font:600 14px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}' +
+    '#sos-busy svg{flex:0 0 auto}#sos-busy.on{opacity:1;transform:translate(-50%,0)}' +
     '@media (prefers-reduced-motion:reduce){.sos-rot,.sos-flag{animation:none}}';
   function inject() {
     if (document.getElementById('sos-spin-css')) return;
     var st = document.createElement('style'); st.id = 'sos-spin-css'; st.textContent = css; document.head.appendChild(st);
   }
-  window.sosSpin = function (text) { return '<div class="sos-load">' + svg(64) + '<div>' + (text || 'Loading…') + '</div></div>'; };
-  // the page's own "Loading…" placeholder
+  window.sosSpin = function (text) { return '<div class="sos-load">' + svg(64) + '<div>' + (text || 'Loading\u2026') + '</div></div>'; };
+  // the page's own "Loading\u2026" placeholder
   function fillPlaceholders() {
     inject();
     Array.prototype.forEach.call(document.querySelectorAll('p.loading'), function (p) { p.outerHTML = window.sosSpin(p.textContent.trim()); });
@@ -45,21 +45,42 @@
   function show() {
     inject();
     if (!pill) { pill = document.createElement('div'); pill.id = 'sos-busy'; pill.setAttribute('role', 'status'); document.body.appendChild(pill); }
-    pill.innerHTML = svg(30) + '<span>Working…</span>'; pill.offsetWidth; pill.className = 'on';
+    pill.innerHTML = svg(30) + '<span>Working\u2026</span>'; pill.offsetWidth; pill.className = 'on';
   }
   function hide() { if (pill) pill.className = ''; }
   var api = (window.SOS && window.SOS.API) || '';
+  /* Calls to the server: a spinner pill if it takes a moment, and when the server is busy (Google's limits, a dropped connection,
+   * a page that isn't our JSON) quietly try again a few times instead of showing an error. */
+  var BUSY = 'Lots of traffic right now. Lots of guards are doing drop spins. Retrying\u2026';
+  var WAIT = [1500, 3000, 5000, 8000, 10000];
+  function say(t) { if (pill) { var sp = pill.querySelector('span'); if (sp) sp.textContent = t; } }
   if (window.fetch) {
     var f0 = window.fetch;
-    window.fetch = function (url) {
+    window.fetch = function (url, opt) {
       var u = String(url && url.url || url || '');
       var mine = (api && u.indexOf(api) === 0) || /\/api$/.test(u) || u.indexOf('script.google.com') >= 0;
-      var body = arguments[1] && typeof arguments[1].body === 'string' ? arguments[1].body : '';
-      if (/"action":"(board|ping)"/.test(body)) mine = false;   // the board's quiet 15-second refresh doesn't need a spinner
       if (!mine) return f0.apply(this, arguments);
-      pending++; if (!timer) timer = setTimeout(function () { timer = null; if (pending) show(); }, 350);
-      function done() { pending = Math.max(0, pending - 1); if (!pending) { clearTimeout(timer); timer = null; hide(); } }
-      return f0.apply(this, arguments).then(function (r) { done(); return r; }, function (e) { done(); throw e; });
+      var body = opt && typeof opt.body === 'string' ? opt.body : '';
+      var quiet = /"action":"(board|ping)"/.test(body);   // the board's 15-second refresh: no pill
+      var self = this, args = arguments, tries = 0;
+      if (!quiet) { pending++; if (!timer) timer = setTimeout(function () { timer = null; if (pending) show(); }, 350); }
+      function done() { if (quiet) return; pending = Math.max(0, pending - 1); if (!pending) { clearTimeout(timer); timer = null; hide(); } }
+      function again() {
+        if (tries >= WAIT.length) return null;
+        if (!quiet) { show(); say(BUSY); }
+        return new Promise(function (res) { setTimeout(res, WAIT[tries++]); }).then(attempt);
+      }
+      function ok(text) { return new Response(text, { status: 200, headers: { 'Content-Type': 'application/json' } }); }
+      function attempt() {
+        return f0.apply(self, args).then(function (r) {
+          return r.text().then(function (text) {
+            var j = null; try { j = JSON.parse(text); } catch (e) {}
+            if (j && !j.busy) return ok(text);
+            return again() || ok(JSON.stringify({ error: 'Still really busy. Give it a minute and try again.' }));
+          });
+        }, function () { return again() || ok(JSON.stringify({ error: 'Can\'t reach SOS Crew right now. Check your connection and try again.' })); });
+      }
+      return attempt().then(function (r) { done(); return r; }, function (e) { done(); throw e; });
     };
   }
 })();
