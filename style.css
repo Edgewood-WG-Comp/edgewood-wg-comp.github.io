@@ -154,3 +154,10 @@ html.dark .chipst.t-guard{background:#2A1B4D}html.dark .chipst.t-props{backgroun
 .stepbtn.done{background:#CCFBF1;color:#115E59;opacity:1}html.dark .stepbtn.done{background:#0D3330;color:#5EEAD4}
 .stepbtn:disabled:not(.done){background:var(--bg);color:var(--sub);opacity:1}
 @media (max-width:560px){.stage .sv{font-size:15px}}
+
+/* tracker: skipped-steps question */
+.askbg{position:fixed;inset:0;background:rgba(20,10,40,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:14px}
+.askbox{background:var(--card);color:var(--ink);border-radius:18px;max-width:460px;width:100%;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.35)}
+.askbox h3{margin:0 0 8px;font-size:19px}.askbox p{margin:0 0 14px;color:var(--sub);font-size:15px}
+.askbtns{display:flex;flex-direction:column;gap:8px}.askbtns .cbtn{width:100%;text-align:center;justify-content:center;border:0;font:inherit;font-weight:700;min-height:46px;cursor:pointer}.askbtns .link{align-self:center;margin-top:4px}
+@media (min-width:700px){.askbg{align-items:center}}

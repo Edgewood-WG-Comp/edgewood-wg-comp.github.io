@@ -53,12 +53,21 @@
     flag(ci, !!u.done.D1, 'Director check-in', 10);
     flag(wu && wu - 5 * 60000, reachedId(u, 'G3'), 'Guard to warm-up', 10);
     flag(wu, reachedId(u, 'G5'), 'Guard in warm-up', 10);
-    flag(wu, reachedId(u, 'P3'), 'Props in holding', 15);
-    flag(pf && pf - 10 * 60000, reachedId(u, 'P5'), 'Props at meet-up', 10);
+    if (hasProps(u)) { flag(wu, reachedId(u, 'P3'), 'Props in holding', 15); flag(pf && pf - 10 * 60000, reachedId(u, 'P5'), 'Props at meet-up', 10); }
     flag(pf, reachedId(u, 'T1'), 'To the gym', 5);
     if (u.done.G8 && !u.done.G9) { alerts.push('Guard left – homeroom NOT cleared'); level = 2; }
     var performing = !!u.done.T3 && !finished;
     return { g: g, p: p, d: d, alerts: alerts, level: level, finished: finished, performing: performing };
+  }
+  /* Props: 'separate' (tracked on their own), 'none' (no props or tarp), 'guard' (tarp travels with the guard). */
+  function hasProps(u) { return !u.props || u.props === 'separate'; }
+  var PROPS_NOTE = { none: 'No props or tarp', guard: 'Tarp travels with the guard' };
+  /* Steps before this one (same track, or guard and props for a together step) that nobody tapped. */
+  function skippedBefore(u, step) {
+    var t = stepById(step); if (!t || t.track === 'Director') return [];
+    var tr = t.track === 'Together' ? ['Guard', 'Props', 'Together'] : [t.track, 'Together'];
+    if (!hasProps(u)) tr = tr.filter(function (x) { return x !== 'Props'; });
+    return S.b.steps.filter(function (s) { return tr.indexOf(s.track) >= 0 && s.order < t.order && !reachedId(u, s.id); });
   }
   function chip(cur, label) {
     if (!cur) return '<div class="chipst none"><div class="cs1">' + esc(label) + '</div><div class="cs2">Not yet</div></div>';
@@ -95,7 +104,7 @@
       var tog = st.g && st.p && st.g.s === st.p.s ? st.g : null;   // guard and props are together right now
       return '<div class="ucard ' + cls + (me.own === u.id ? ' own' : '') + '"><div class="uh"><div><span class="uo">' + esc(u.order) + '</span> <b class="un">' + esc(u.name) + '</b>' + (u.cls ? ' <span class="muted">' + esc(u.cls) + '</span>' : '') + (me.own === u.id ? ' <span class="pill done">You</span>' : '') + '</div>' +
         '<div class="ut">' + (u.warmup ? 'Warm-up ' + esc(hm(u.warmup)) : '') + (u.perform ? ' · Perform <b>' + esc(hm(u.perform)) + '</b>' : '') + '</div></div>' +
-        (tog ? '<div class="chips2">' + chip(tog, 'Unit') + '</div>' : '<div class="chips2">' + chip(st.g, 'Guard') + chip(st.p, 'Props / tarp') + '</div>') +
+        (tog ? '<div class="chips2">' + chip(tog, 'Unit') + '</div>' : '<div class="chips2">' + chip(st.g, 'Guard') + (hasProps(u) ? chip(st.p, 'Props / tarp') : '<div class="chipst none"><div class="cs1">Props / tarp</div><div class="cs2">' + esc(PROPS_NOTE[u.props]) + '</div></div>') + '</div>') +
         (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') + guides(u) +
         (me.kind !== 'director' ? '<div class="whosub">Director' + (u.director ? ': ' + esc(u.director) : '') + ' · ' + (st.d ? '✓ ' + esc(st.d.s.id === 'D1' ? 'checked in' : st.d.s.name) + ' ' + esc(clock(st.d.at)) : 'not checked in') + (u.phone ? ' · <a href="tel:' + tel(u.phone) + '">Call</a> · <a href="sms:' + tel(u.phone) + '">Text</a>' : '') + '</div>' : '') +
         (me.steps.length && MODE === 'board' ? '<div style="margin-top:6px"><a class="cbtn alt" href="track.html#' + esc(u.id) + '">Update</a></div>' : '') + '</div>';
@@ -110,7 +119,7 @@
     if (!me.steps.length) { app.innerHTML = header(me.name) + '<div class="card"><p class="muted">' + esc(me.note || (me.view ? 'Your account can see the board but can\'t update steps.' : 'Nothing to update right now.')) + '</p>' + (me.view ? '<a class="cbtn alt" href="board.html">Open the live board</a>' : '') + '</div>' + escalate(me) + footer(); return; }
     var html = header(me.name + ' · can update ' + (me.steps.length === b.steps.length ? 'every step' : me.steps.length + ' step' + (me.steps.length > 1 ? 's' : '')) + (me.scope && b.units.length === 1 ? ' for ' + b.units[0].name : '')) + banner() + (me.note ? '<div class="banner warn">' + esc(me.note) + '</div>' : '');
     if (me.scope && b.units.length === 1 && !S.unit) S.unit = b.units[0].id;
-    if (S.undo) html += '<div class="banner ok">' + esc(S.undo.text) + ' <button class="link" data-act="undo" data-id="' + esc(S.undo.logId) + '">Undo</button></div>';
+    if (S.undo) html += '<div class="banner ok">' + esc(S.undo.text) + ' <button class="link" data-act="undo" data-id="' + esc(S.undo.logIds.join(',')) + '">Undo</button></div>';
     html += '<div class="card"><label for="unitsel">Unit</label><select id="unitsel"><option value="">Pick a unit…</option>' + b.units.map(function (u) {
       var st = status(u), cur = current(u, ['Guard', 'Props', 'Together']);
       return '<option value="' + esc(u.id) + '"' + (u.id === S.unit ? ' selected' : '') + '>' + esc(u.order + '. ' + u.name + (cur ? ' – ' + cur.s.name : '') + (st.level === 2 ? ' ⚠' : '')) + '</option>';
@@ -118,19 +127,44 @@
     var u = b.units.filter(function (x) { return x.id === S.unit; })[0];
     if (u) {
       var st = status(u);
-      html += '<div class="card"><h2>' + esc(u.name) + (u.perform ? ' · perform ' + esc(hm(u.perform)) : '') + '</h2>' + (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') + guides(u) +
-        sections(b.steps).map(function (sec) {
+      html += '<div class="card"><h2>' + esc(u.name) + (u.perform ? ' · perform ' + esc(hm(u.perform)) : '') + '</h2>' + (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') + guides(u) + (hasProps(u) ? '' : '<div class="whosub" style="margin:6px 0"><b>' + esc(PROPS_NOTE[u.props]) + '.</b> Props steps not already tapped are hidden for this guard. (Admins can change this under Units.)</div>') +
+        sections(b.steps.filter(function (s) { return hasProps(u) || s.track !== 'Props' || u.done[s.id]; })).map(function (sec) {
           return '<div class="trk"><div class="kicker">' + esc(sec.label) + '</div>' + sec.list.map(function (s) {
             var d = u.done[s.id], can = me.steps.indexOf(s.id) >= 0 && (!me.scope || me.scope[s.id] === 'all' || (me.scope[s.id] || []).indexOf(u.id) >= 0);
             return '<button class="stepbtn' + (d ? ' done' : '') + '" data-act="mark" data-step="' + esc(s.id) + '"' + (can && !d ? '' : ' disabled') + '><span>' + esc(s.name) + '</span><span class="sm2">' + (d ? '✓ ' + esc(clock(d.at)) + (d.by ? ' · ' + esc(d.by) : '') : can ? 'Tap when it happens' : '') + '</span></button>';
           }).join('') + '</div>';
         }).join('') + '</div>';
     }
-    app.innerHTML = html + escalate(me) + footer();
+    app.innerHTML = html + ask() + escalate(me) + footer();
   }
   /* Homeroom guides on this unit (admins and coordinators get them from the server; nobody else does). */
   function guides(u) {
     return (u.guides || []).map(function (g) { return '<div class="whosub">Guide: ' + esc(g.name) + ' <span class="muted">' + esc(g.when) + '</span>' + (g.phone ? ' · <a href="tel:' + tel(g.phone) + '">Call</a> · <a href="sms:' + tel(g.phone) + '">Text</a>' : ' · no phone') + '</div>'; }).join('');
+  }
+  /* "You skipped something" question, shown before a tap goes through. */
+  function ask() {
+    var a = S.ask; if (!a) return '';
+    var names = function (l) { return l.map(function (s) { return s.name; }).join(', '); };
+    var body, btns;
+    if (a.props.length) {
+      body = '<h3>Are the guard and props/tarp moving together?</h3><p>The props/tarp weren\'t marked: <b>' + esc(names(a.props)) + '</b>.' + (a.guard.length ? ' Guard steps not marked: <b>' + esc(names(a.guard)) + '</b>; they\'ll be marked too.' : '') + '</p>';
+      btns = '<button class="cbtn" data-act="askall">Yes, together: mark the props steps done</button>' +
+        (a.anyProps ? '' : '<button class="cbtn alt" data-act="askmode" data-mode="none">This guard has no props or tarp</button>') +
+        '<button class="cbtn alt" data-act="askmode" data-mode="guard">The tarp is traveling with the guard</button>';
+    } else {
+      body = '<h3>Mark the skipped steps too?</h3><p>These weren\'t marked: <b>' + esc(names(a.guard)) + '</b>.</p>';
+      btns = '<button class="cbtn" data-act="askall">Yes, they happened: mark them too</button><button class="cbtn alt" data-act="askjust">Just this step</button>';
+    }
+    return '<div class="askbg"><div class="askbox" role="dialog" aria-modal="true">' + body + '<div class="askbtns">' + btns + '<button class="link" data-act="askcancel">Cancel</button></div></div></div>';
+  }
+  function mark(step, fill, props) {
+    var u = S.b.units.filter(function (x) { return x.id === S.unit; })[0];
+    S.ask = null; render();
+    call({ action: 'unitMark', unitId: S.unit, stepId: step, fill: fill || [], props: props || '' }).then(function (r) {
+      if (r.error) S.msg = { kind: 'err', text: r.error };
+      else { S.msg = null; var n = (r.logIds || [r.logId]).length; S.undo = { logIds: r.logIds || [r.logId], text: (stepOf(step) || {}).name + ' ✓' + (n > 1 ? ' (and ' + (n - 1) + ' skipped step' + (n > 2 ? 's' : '') + ')' : '') + (props ? ' · ' + PROPS_NOTE[props] : '') }; }
+      load();
+    });
   }
   /* Who to go to: a group member's lead, else the Director escalation text. Never a director's number. */
   function escalate(me) {
@@ -157,12 +191,21 @@
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act');
     if (act === 'mark') {
-      var step = b.getAttribute('data-step'); b.disabled = true;
-      call({ action: 'unitMark', unitId: S.unit, stepId: step }).then(function (r) {
-        if (r.error) S.msg = { kind: 'err', text: r.error }; else { S.msg = null; S.undo = { logId: r.logId, text: (stepOf(step) || {}).name + ' ✓' }; }
-        load();
-      });
-    } else if (act === 'undo') { b.disabled = true; call({ action: 'unitUndo', logId: b.getAttribute('data-id') }).then(function (r) { S.undo = null; S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Undone.' }; load(); }); }
+      var step = b.getAttribute('data-step'), un = S.b.units.filter(function (x) { return x.id === S.unit; })[0];
+      var sk = un ? skippedBefore(un, step) : [];
+      if (sk.length) {
+        var t = stepById(step), pr = sk.filter(function (s) { return s.track === 'Props'; });
+        S.ask = { step: step, props: t.track === 'Together' ? pr : [], guard: t.track === 'Together' ? sk.filter(function (s) { return s.track !== 'Props'; }) : sk,
+          anyProps: S.b.steps.some(function (s) { return s.track === 'Props' && un.done[s.id]; }) };
+        if (!S.ask.props.length && !S.ask.guard.length) { S.ask = null; return mark(step); }
+        return render();
+      }
+      b.disabled = true; mark(step);
+    } else if (act === 'askall') { var a1 = S.ask; mark(a1.step, a1.props.concat(a1.guard).map(function (s) { return s.id; })); }
+    else if (act === 'askjust') { mark(S.ask.step); }
+    else if (act === 'askmode') { var a2 = S.ask; mark(a2.step, a2.guard.map(function (s) { return s.id; }), b.getAttribute('data-mode')); }
+    else if (act === 'askcancel') { S.ask = null; render(); }
+    else if (act === 'undo') { b.disabled = true; call({ action: 'unitUndo', logIds: b.getAttribute('data-id').split(',') }).then(function (r) { S.undo = null; S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Undone.' }; load(); }); }
     else if (act === 'out') { put(P + 'sosTrack', ''); put(P + 'sosUnitCode', ''); put(P + 'sosAdminTok', '', true); S.track = S.ucode = S.token = S.fam = S.lead = ''; S.b = null; render(); }
   });
 

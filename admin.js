@@ -254,6 +254,7 @@
       return '<div class="editrow w"><div class="row">' + f('u-n', 'Unit', x.name) + f('u-c', 'Class', x.cls) + f('u-o', 'Order', x.order, 'number') + '</div>' +
         '<div class="row">' + f('u-ci', 'Check-in', x.checkin, 'time') + f('u-w', 'Warm-up', x.warmup, 'time') + f('u-p', 'Perform', x.perform, 'time') + '</div>' +
         '<div class="row">' + f('u-d', 'Director', x.director) + (u.contact ? f('u-dp', 'Director cell', x.phone, 'tel') + f('u-de', 'Director email', x.email, 'email') : '') + '</div>' + (u.contact ? '' : '<div class="whosub">Director phone and email are hidden for your role.</div>') +
+        '<label>Props</label><select class="u-pr">' + [['separate', 'Props & tarp (tracked on their own)'], ['none', 'No props or tarp'], ['guard', 'Tarp travels with the guard']].map(function (o) { return '<option value="' + o[0] + '"' + ((x.props || 'separate') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
         '<label>Notes</label><input class="u-no" value="' + esc(x.notes || '') + '">' +
         '<div class="row" style="margin-top:8px"><button class="sm" data-act="usave" data-id="' + esc(x.id || '') + '">Save</button><button class="sm ghost" data-act="uedit" data-id="">Cancel</button></div></div>';
     };
@@ -424,7 +425,7 @@
       call({ action: 'adminRoleDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role removed.'); loadAccess(); }); }
     else if (act === 'uedit') { S.uedit = b.getAttribute('data-id') || ''; render(); }
     else if (act === 'usave') { var ue = b.closest('.editrow'), uv = function (c) { return ue.querySelector(c).value.trim(); }; b.disabled = true;
-      call({ action: 'adminUnitSave', id: b.getAttribute('data-id') || '', name: uv('.u-n'), cls: uv('.u-c'), order: uv('.u-o'), checkin: uv('.u-ci'), warmup: uv('.u-w'), perform: uv('.u-p'), director: uv('.u-d'), phone: S.units.contact ? uv('.u-dp') : '', email: S.units.contact ? uv('.u-de') : '', notes: uv('.u-no') })
+      call({ action: 'adminUnitSave', id: b.getAttribute('data-id') || '', name: uv('.u-n'), cls: uv('.u-c'), order: uv('.u-o'), checkin: uv('.u-ci'), warmup: uv('.u-w'), perform: uv('.u-p'), director: uv('.u-d'), phone: S.units.contact ? uv('.u-dp') : '', email: S.units.contact ? uv('.u-de') : '', notes: uv('.u-no'), props: uv('.u-pr') })
         .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Unit saved.'); if (!r.error) S.uedit = ''; loadUnits(); }); }
     else if (act === 'udel') { if (!confirm('Remove ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
       call({ action: 'adminUnitDelete', id: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadUnits(); }); }
