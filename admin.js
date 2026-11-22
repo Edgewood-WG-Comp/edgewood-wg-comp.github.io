@@ -50,7 +50,7 @@
   // ---------- day grid
   function cls(f, n) { return n === 0 ? 'z' : f > n ? 'over' : f >= n ? 'full' : f === 0 ? 'empty' : 'part'; }
   function renderGrid() {
-    var d = S.day; if (!d) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var d = S.day; if (!d) return '<div class="card">' + spin() + '</div>';
     var b = d.balance, html = '';
     html += '<div class="tabs">' + d.days.map(function (x) { var p = dayParts(x.date); return '<button class="tab' + (x.date === d.date ? ' on' : '') + '" data-act="day" data-date="' + x.date + '"><div class="d1">' + esc(p.dow) + '</div><div class="d2">' + esc(p.md) + '</div></button>'; }).join('') + '</div>';
     html += '<div class="banner ' + (b.tight ? 'warn' : 'info') + '">All days: <b>' + b.openSpots + '</b> open spots families can take' + (b.assignedOpen ? ' (+' + b.assignedOpen + ' coordinator-assigned)' : '') + ' · <b>' + b.stillOwed + '</b> shifts still owed and not signed up.' + (b.tight ? ' Not enough spots for what\'s owed: add spots, or families will need Extra Help.' : '') + '</div>';
@@ -126,7 +126,7 @@
     return ro ? '<span class="pill ' + (p.bg === 'Cleared' || p.bg === 'Exempt' ? 'done' : 'need') + '">' + esc(p.bg) + '</span>' : '<select class="bgsel" data-pid="' + esc(p.id) + '" style="width:auto">' + opt(BG, p.bg) + '</select>';
   }
   function renderChecks() {
-    var r = S.bg; if (!r) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var r = S.bg; if (!r) return '<div class="card">' + spin() + '</div>';
     return '<div class="card"><h2>Background checks</h2><p class="muted">Adults (not students) on the People tab: ' + BG.map(function (k) { return esc(k) + ' ' + (r.counts[k] || 0); }).join(' · ') + '. Set a status here or in Families; the school report import comes later.</p></div>' +
       '<div class="card"><h2>Signed up but not cleared · ' + r.rows.length + '</h2>' + (r.rows.length ? r.rows.map(function (x) {
         return '<div class="status-line"><div><div class="who">' + esc(x.name) + '</div><div class="whosub"><button class="link" data-act="openfam" data-fid="' + esc(x.familyId) + '">' + esc(x.family) + '</button> · ' + x.shifts + ' shift' + (x.shifts > 1 ? 's' : '') + (x.date ? ' · ' + esc(x.date) : '') + '</div></div>' + bgCtl({ id: x.personId, bg: x.status, type: 'Parent' }) + '</div>';
@@ -136,7 +136,7 @@
   // ---------- who's short
   function renderShort() {
     var r = S.short, html = '<div class="card"><h2>Who\'s short</h2><div class="row" style="flex-wrap:wrap"><button class="chip' + (S.which === 'signup' ? ' on' : '') + '" style="flex:none" data-act="which" data-w="signup">Not signed up enough</button><button class="chip' + (S.which === 'worked' ? ' on' : '') + '" style="flex:none" data-act="which" data-w="worked">Didn\'t work enough (after the event)</button><button class="sm ghost" style="flex:none" data-act="csv">Download CSV</button></div>';
-    if (!r) return html + '<p class="muted">Loading…</p></div>';
+    if (!r) return html + spin() + '</div>';
     if (!r.rows.length) return html + '<p class="muted">Nobody is short. 🎉</p></div>';
     return html + '<div class="gridwrap"><table class="list"><thead><tr><th>Family</th><th>Who</th><th>Owes</th><th>Signed</th><th>Worked</th><th>Short</th>' + (r.rows.some(function (x) { return x.fee !== ''; }) ? '<th>Fee</th>' : '') + '</tr></thead><tbody>' +
       r.rows.map(function (x) { return '<tr><td><button class="link" data-act="openfam" data-fid="' + esc(x.familyId) + '">' + esc(x.family) + '</button></td><td>' + esc(x.who + (x.group ? ' (' + x.group + ')' : '')) + '</td><td>' + x.owed + '</td><td>' + x.signed + '</td><td>' + x.worked + '</td><td><b>' + x.gap + '</b></td>' + (x.fee !== '' ? '<td>$' + x.fee + '</td>' : '') + '</tr>'; }).join('') +
@@ -144,7 +144,7 @@
   }
   // ---------- name in the hat: candidates for Assigned spots
   function renderHat() {
-    var h = S.hat; if (!h) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var h = S.hat; if (!h) return '<div class="card">' + spin() + '</div>';
     var ro = S.who.canEdit === false || S.spot;
     return '<div class="card"><h2>Name in the hat</h2><p class="muted">People who offered to take a spot the coordinators fill. ' + (h.open ? 'Open' + (h.closes ? ' until ' + esc(h.closes) : '') : 'Closed') + ' (Settings › Name in the hat / Hat closes). Placing someone is a normal signup; when the spot fills, everyone else still pending is emailed that they weren\'t picked.</p></div>' +
       (h.shifts.length ? h.shifts.map(function (x) {
@@ -158,7 +158,7 @@
   }
   function loadHat() { return call({ action: 'adminHat' }).then(function (r) { if (r.error) flash('err', r.error); else S.hat = r; render(); }); }
   function renderReview() {
-    var f = S.flags; if (!f) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var f = S.flags; if (!f) return '<div class="card">' + spin() + '</div>';
     return '<div class="card"><h2>Families to review · ' + f.families.length + '</h2><p class="muted">Self-registered families, and possible duplicates (a student already on another family) first.</p>' +
       (f.families.length ? f.families.map(function (x) { return '<div class="status-line"><div><div class="who">' + esc(x.name) + ' · ' + esc(x.id) + '</div><div class="whosub">' + esc(x.people.join(', ')) + '</div><div class="whosub">' + esc(x.emails) + '</div>' + (x.check ? '<div class="whosub" style="color:var(--warn)">' + esc(x.notes) + '</div>' : '') + '</div><button class="chk" data-act="openfam" data-fid="' + esc(x.id) + '">Open</button></div>'; }).join('') : '<p class="muted">Nothing to review.</p>') + '</div>';
   }
@@ -168,7 +168,7 @@
   function opt(list, sel) { return list.map(function (x) { return '<option' + (x === sel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); }
   function toMin(t) { var p = String(t).split(':'); return +p[0] * 60 + +p[1]; }
   function renderSetup() {
-    var u = S.setup; if (!u) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var u = S.setup; if (!u) return '<div class="card">' + spin() + '</div>';
     if (!S.sdate) S.sdate = (u.days[0] || {}).date || '';
     var dayShifts = u.shifts.filter(function (s) { return s.date === S.sdate; });
     var blocks = {}; dayShifts.forEach(function (s) { if (s.status !== 'Closed') blocks[s.start + '-' + s.end] = { start: s.start, end: s.end }; });
@@ -217,7 +217,7 @@
 
   // ---------- access (super admins): who is an admin/spotter, and the role list
   function renderAccess() {
-    var a = S.access; if (!a) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var a = S.access; if (!a) return '<div class="card">' + spin() + '</div>';
     var rn = a.roles.map(function (r) { return r.name; });
     var person = function (p) {
       if (S.aedit === (p ? p.row : 'new')) return '<div class="editrow w">' + (p ? '' : '<label>Find a volunteer (or type the email below)</label><div class="row"><input class="x-q" placeholder="Name or email" value="' + esc(S.aQ || '') + '"><button class="sm" style="flex:none" data-act="afind">Find</button></div>' +
@@ -248,7 +248,7 @@
 
   // ---------- units (contest-day tracking)
   function renderUnits() {
-    var u = S.units; if (!u) return '<div class="card"><p class="muted">Loading…</p></div>';
+    var u = S.units; if (!u) return '<div class="card">' + spin() + '</div>';
     var form = function (x) {
       x = x || {}; var f = function (cls, lab, val, type) { return '<div><label>' + lab + '</label><input class="' + cls + '"' + (type ? ' type="' + type + '"' : '') + ' value="' + esc(val || '') + '"></div>'; };
       return '<div class="editrow w"><div class="row">' + f('u-n', 'Unit', x.name) + f('u-c', 'Class', x.cls) + f('u-o', 'Order', x.order, 'number') + '</div>' +
@@ -270,7 +270,7 @@
   function loadUnits() { return call({ action: 'adminUnits' }).then(function (r) { if (r.error) flash('err', r.error); else S.units = r; render(); }); }
   // trackers (in Access, super admins)
   function trackersCard() {
-    var u = S.units; if (!u) return '<div class="card"><h2>Unit trackers</h2><p class="muted">Loading…</p></div>';
+    var u = S.units; if (!u) return '<div class="card"><h2>Unit trackers</h2>' + spin() + '</div>';
     var form = function (t) {
       t = t || { steps: '' }; var all = /^all$/i.test(t.steps), has = function (id) { return all || new RegExp('(^|,\\s*)' + id + '(,|$)').test(t.steps.replace(/\s/g, '')); };
       return '<div class="editrow w"><div class="row"><div><label>Name</label><input class="t-n" value="' + esc(t.name || '') + '"></div><div><label>Google email (optional)</label><input class="t-e" type="email" value="' + esc(t.email || '') + '"></div></div>' +
@@ -298,6 +298,7 @@
   }
 
   // ---------- loading
+  function spin() { return window.sosSpin ? sosSpin() : '<p class="muted">Loading…</p>'; }
   function loadDay(date) { return call({ action: 'adminDay', date: date || S.date || '' }).then(function (r) { if (r.error) flash('err', r.error); else { S.day = r; S.date = r.date; } render(); }); }
   function loadFam(fid) { return call({ action: 'adminFamily', familyId: fid }).then(function (r) { if (r.error) flash('err', r.error); else S.fam = r; S.view = 'fam'; render(); }); }
   function loadShort() { S.short = null; render(); return call({ action: 'adminShort', which: S.which }).then(function (r) { if (r.error) flash('err', r.error); else S.short = r; render(); }); }
