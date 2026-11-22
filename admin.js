@@ -304,10 +304,28 @@
   function loadShort() { S.short = null; render(); return call({ action: 'adminShort', which: S.which }).then(function (r) { if (r.error) flash('err', r.error); else S.short = r; render(); }); }
   function loadFlags() { S.flags = null; render(); return call({ action: 'adminFlags' }).then(function (r) { if (r.error) flash('err', r.error); else S.flags = r; render(); }); }
   function refresh() { return S.view === 'fam' && S.fam ? loadFam(S.fam.family.id) : loadDay(); }
+  // Nov 21 (Nick): one place that opens a screen and loads only what that screen needs (nav pills and direct links both use it)
+  var VIEWS = ['grid', 'setup', 'units', 'fam', 'short', 'hat', 'checks', 'review', 'access'];
+  function goView(v) {
+    S.view = v;
+    if (v === 'units') loadUnits(); else if (v === 'access') { loadAccess(); loadUnits(); } else if (v === 'setup') loadSetup(); else if (v === 'short') loadShort();
+    else if (v === 'review') loadFlags(); else if (v === 'hat') loadHat(); else if (v === 'checks') loadChecks(); else if (v === 'grid') loadDay(); else render();
+  }
+  // Direct links ("warp zones" from Nick's launcher): admin.html?v=short, ?v=fam&q=Smith (searches right away), ?date=YYYY-MM-DD (day grid).
+  // Only the screen asked for loads; the day grid isn't fetched first. Sign-in and the server's access checks are unchanged.
+  function startView() {
+    var q = {}; location.search.replace(/^\?/, '').split('&').forEach(function (kv) { var i = kv.indexOf('='); if (i > 0) q[decodeURIComponent(kv.slice(0, i))] = decodeURIComponent(kv.slice(i + 1).replace(/\+/g, ' ')); });
+    if (/^\d{4}-\d{2}-\d{2}$/.test(q.date || '')) S.date = q.date;
+    var v = VIEWS.indexOf(q.v) >= 0 ? q.v : 'grid';
+    if (v === 'access' && !S.who.canManage) v = 'grid';
+    if (v === 'checks' && !S.who.bgOn) v = 'grid';
+    if (v === 'fam' && q.q) { S.view = 'fam'; S.famQ = q.q; S.famHits = null; render(); return call({ action: 'adminSearch', q: q.q }).then(function (r) { S.famHits = r.people || []; if (S.famHits.length === 1 && S.famHits[0].familyId) return loadFam(S.famHits[0].familyId); render(); }); }
+    goView(v);
+  }
   function start() {
     call({ action: 'adminWho' }).then(function (r) {
       if (r.error) { S.who = null; if (!S.msg) flash('err', r.error); return render(); }
-      S.who = r; S.msg = null; loadDay();
+      S.who = r; S.msg = null; startView();
     });
   }
 
@@ -328,7 +346,7 @@
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'); S.msg = null;
-    if (act === 'view') { S.view = b.getAttribute('data-v'); if (S.view === 'units') loadUnits(); else if (S.view === 'access') { loadAccess(); loadUnits(); } else if (S.view === 'setup') loadSetup(); else if (S.view === 'short') loadShort(); else if (S.view === 'review') loadFlags(); else if (S.view === 'hat') loadHat(); else if (S.view === 'checks') loadChecks(); else if (S.view === 'grid') loadDay(); else render(); }
+    if (act === 'view') goView(b.getAttribute('data-v'));
     else if (act === 'day') { S.cell = ''; S.addHits = null; loadDay(b.getAttribute('data-date')); }
     else if (act === 'cell') { S.cell = S.cell === b.getAttribute('data-id') ? '' : b.getAttribute('data-id'); S.addHits = null; S.addQ = ''; render(); var p = document.getElementById('panel'); if (p) p.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }
     else if (act === 'addsearch') { S.addQ = document.getElementById('addq').value; call({ action: 'adminSearch', q: S.addQ }).then(function (r) { S.addHits = r.people || []; render(); }); }
