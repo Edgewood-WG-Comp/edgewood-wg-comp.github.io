@@ -174,3 +174,4 @@ html.dark .chipst.t-guard{background:#2A1B4D}html.dark .chipst.t-props{backgroun
 html.dark .tpill.done{background:#134E4A;color:#CCFBF1}
 .donebox{margin:4px 14px 10px}.donebox summary{cursor:pointer;font-weight:700;color:var(--sub);padding:8px 0}.donebox .tiles{margin:6px 0 0}
 .nav2t{margin:0 14px 8px}
+.tpill.alt{background:#EDE9FE;color:var(--brand)}

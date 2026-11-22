@@ -117,11 +117,13 @@
   // ---------- tracker
   function renderTrack() {
     var b = S.b, me = b.me;
-    if (!me.steps.length) { app.innerHTML = header(me.name) + '<div class="card"><p class="muted">' + esc(me.note || (me.view ? 'Your account can see the board but can\'t update steps.' : 'Nothing to update right now.')) + '</p>' + (me.view ? '<a class="cbtn alt" href="board.html">Open the live board</a>' : '') + '</div>' + escalate(me) + footer(); return; }
-    var html = header(me.name + ' · can update ' + (me.steps.length === b.steps.length ? 'every step' : me.steps.length + ' step' + (me.steps.length > 1 ? 's' : '')) + (me.scope && b.units.length === 1 ? ' for ' + b.units[0].name : '')) + banner() + (me.note ? '<div class="banner warn">' + esc(me.note) + '</div>' : '');
+    if (!me.steps.length && !b.claim) { app.innerHTML = header(me.name) + '<div class="card"><p class="muted">' + esc(me.note || (me.view ? 'Your account can see the board but can\'t update steps.' : 'Nothing to update right now.')) + '</p>' + (me.view ? '<a class="cbtn alt" href="board.html">Open the live board</a>' : '') + '</div>' + escalate(me) + footer(); return; }
+    var html = header(b.claim && !me.steps.length ? me.name + ' · homeroom guide' : me.name + ' · can update ' + (me.steps.length === b.steps.length ? 'every step' : me.steps.length + ' step' + (me.steps.length > 1 ? 's' : '')) + (me.scope && b.units.length === 1 ? ' for ' + b.units[0].name : '')) + banner() + (me.note ? '<div class="banner warn">' + esc(me.note) + '</div>' : '');
     if (S.undo) html += '<div class="banner ok">' + esc(S.undo.text) + ' <button class="link" data-act="undo" data-id="' + esc(S.undo.logIds.join(',')) + '">Undo</button></div>';
     var u = b.units.filter(function (x) { return x.id === S.unit; })[0];
-    if (!u) html += tiles(b, me);
+    if (b.claim) html += claimView(b);
+    if (!u && (me.guiding || []).length) html += '<div class="card"><p style="margin:0">You\'re guiding <b>' + esc(me.guiding.map(function (g) { return g.unit; }).join(', ')) + '</b> today. Stay with them all day. <button class="link" data-act="release">Not your guard?</button></p></div>';
+    if (!u) { if (b.units.length) html += tiles(b, me); }
     else html += '<div class="nav2t"><button class="link" data-act="back">← All guards</button></div>';
     if (u) {
       var st = status(u);
@@ -158,9 +160,21 @@
     return '<div class="tile' + (st.level === 2 ? ' red' : st.level === 1 ? ' amber' : '') + '" data-act="open" data-unit="' + esc(u.id) + '">' +
       '<div class="th"><b>' + esc(u.order + '. ' + u.name) + '</b>' + (u.perform ? '<span class="muted">perform ' + esc(hm(u.perform)) + '</span>' : '') + '</div>' +
       (st.alerts.length ? '<div class="ualert">' + esc(st.alerts.join(' · ')) + '</div>' : '') +
-      line('Director', st.d, 'not checked in') +
+      line('Director', st.d, 'not checked in') + ((u.guides || []).length ? '<div class="tl"><span class="tlk">Guide</span> ' + esc(u.guides.map(function (g) { return g.name; }).join(', ')) + '</div>' : '') +
       (tog ? line('Guard + props', tog, '') : line('Guard', st.g, 'not here yet') + (hasProps(u) ? line('Props', st.p, 'not here yet') : '<div class="tl"><span class="tlk">Props</span> <span class="muted">' + esc(PROPS_NOTE[u.props]) + '</span></div>')) +
       '<div class="tpills">' + pills + '</div></div>';
+  }
+  /* Homeroom guides without a guard yet: pick from the guards (one guide per guard). */
+  function claimView(b) {
+    var ppl = b.claim.people, who = S.claimAs && ppl.some(function (p) { return p.personId === S.claimAs; }) ? S.claimAs : ppl[0].personId;
+    var list = b.claim.units.slice().sort(function (a, c) { return (a.guide ? 2 : a.arrived ? 0 : 1) - (c.guide ? 2 : c.arrived ? 0 : 1) || a.order - c.order; });
+    return '<div class="card"><h2>Pick your guard</h2><p class="muted" style="margin-top:0">When your guard arrives, claim them. You stay with them all day, and they show up as your guard for everyone else.</p>' +
+      (ppl.length > 1 ? '<div class="tpills" style="margin:0 0 10px">' + ppl.map(function (p) { return '<button class="tpill' + (p.personId === who ? '' : ' alt') + '" data-act="claimas" data-pid="' + esc(p.personId) + '">' + esc(p.name) + '</button>'; }).join('') + '</div>' : '') +
+      list.map(function (x) {
+        var st = x.guide ? esc(x.guide) + ' has them' : x.arrived ? 'Here' : 'Not here yet';
+        return '<div class="status-line"><div><div class="who">' + esc(x.order + '. ' + x.name) + '</div><div class="whosub">' + st + (x.perform ? ' · perform ' + esc(hm(x.perform)) : '') + '</div></div>' +
+          (x.guide ? '' : '<button class="tpill" data-act="claim" data-unit="' + esc(x.id) + '" data-pid="' + esc(who) + '">Claim</button>') + '</div>';
+      }).join('') + '</div>';
   }
   function tiles(b, me) {
     var rows = b.units.map(function (u) { var nx = nextFor(me, u); return { u: u, todo: nx.some(function (n) { return n.todo; }) }; });
@@ -243,6 +257,7 @@
         if (!un.propsSet) { S.ask = { kind: 'checkin-ask', unit: uid, step: step, props: [], guard: [] }; return render(); }
       }
       var sk = un ? skippedBefore(un, step) : [];
+      if (S.b.me.scope) sk = sk.filter(function (s) { return canTap(S.b.me, un, s.id); });   // guides: only their own steps
       if (sk.length) {
         var t = stepById(step), pr = sk.filter(function (s) { return s.track === 'Props'; });
         S.ask = { unit: uid, step: step, props: t.track === 'Together' ? pr : [], guard: t.track === 'Together' ? sk.filter(function (s) { return s.track !== 'Props'; }) : sk,
@@ -257,6 +272,9 @@
     else if (act === 'askmode') { var a2 = S.ask; mark(a2.step, a2.guard.map(function (s) { return s.id; }), b.getAttribute('data-mode')); }
     else if (act === 'open') { S.unit = b.getAttribute('data-unit'); S.undo = null; try { history.replaceState(null, '', '#' + S.unit); } catch (x) {} render(); window.scrollTo(0, 0); }
     else if (act === 'back') { S.unit = ''; S.undo = null; try { history.replaceState(null, '', location.pathname + location.search); } catch (x) {} render(); }
+    else if (act === 'claimas') { S.claimAs = b.getAttribute('data-pid'); render(); }
+    else if (act === 'claim') { b.disabled = true; call({ action: 'unitClaim', unitId: b.getAttribute('data-unit'), personId: b.getAttribute('data-pid') }).then(function (r) { S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Claimed ' + r.unit + '.' }; load(); }); }
+    else if (act === 'release') { if (!confirm('Let go of this guard? Another guide can claim them.')) return; call({ action: 'unitRelease' }).then(function (r) { S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Released. Pick your guard.' }; S.unit = ''; load(); }); }
     else if (act === 'askcancel') { S.ask = null; render(); }
     else if (act === 'undo') { b.disabled = true; call({ action: 'unitUndo', logIds: b.getAttribute('data-id').split(',') }).then(function (r) { S.undo = null; S.msg = r.error ? { kind: 'err', text: r.error } : { kind: 'ok', text: 'Undone.' }; load(); }); }
     else if (act === 'out') { put(P + 'sosTrack', ''); put(P + 'sosUnitCode', ''); put(P + 'sosAdminTok', '', true); S.track = S.ucode = S.token = S.fam = S.lead = ''; S.b = null; render(); }
