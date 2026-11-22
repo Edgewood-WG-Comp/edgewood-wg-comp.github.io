@@ -9,7 +9,8 @@
 
   function esc(v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return '&#' + c.charCodeAt(0) + ';'; }); }
   function get(k) { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } }
-  function put(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
+  var AS = window.sosActAs ? sosActAs(['fam']) : null;   // admin acting as this family: don't touch this browser's own sign-in
+  function put(k, v) { if (AS && k === KEY) return; try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch (e) {} }
   function label(m) { m = ((m % 1440) + 1440) % 1440; var h = Math.floor(m / 60), mi = m % 60, ap = h >= 12 ? 'PM' : 'AM'; return (h % 12 || 12) + (mi ? ':' + ('0' + mi).slice(-2) : '') + ' ' + ap; }
   function hhmm(m) { return ('0' + Math.floor(m / 60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2); }
   function dayParts(iso) { var p = iso.split('-'), d = new Date(+p[0], +p[1] - 1, +p[2]); return { dow: d.toLocaleDateString('en-US', { weekday: 'short' }), md: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), long: d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' }) }; }
@@ -320,6 +321,6 @@
   try { var v = JSON.parse(get('sosView') || '{}'); S.filter = v.filter || {}; S.onlyOpen = !!v.onlyOpen; } catch (e) {}
   var q = (location.search.match(/[?&]code=([A-Za-z0-9]+)/) || [])[1];
   if (q) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
-  var start = (q || get(KEY)).toUpperCase();
+  var start = (AS ? AS.code : q || get(KEY)).toUpperCase();
   call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (start) loadFamily(start); else render(); });
 })();

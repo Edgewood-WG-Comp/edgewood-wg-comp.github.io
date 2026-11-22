@@ -285,6 +285,9 @@
   S.ucode = ((q.match(/[?&]unit=([A-Za-z0-9]+)/) || [])[1] || (S.track ? '' : get(P + 'sosUnitCode'))).toUpperCase();
   S.token = get(P + 'sosAdminTok', true);
   if (!S.track && !S.ucode && !S.token) { S.fam = get(P + 'sosCode'); S.lead = get(P + 'sosLead'); }   // signed in on the family or point-person page
+  var AS = window.sosActAs ? sosActAs(['fam', 'guide', 'track', 'unit', 'lead']) : null;   // admin acting as someone: this tab only, not as the admin
+  if (AS) { S.track = AS.kind === 'track' ? AS.code : ''; S.ucode = AS.kind === 'unit' ? AS.code : ''; S.token = ''; S.fam = AS.kind === 'guide' || AS.kind === 'fam' ? AS.code : ''; S.lead = AS.kind === 'lead' ? AS.code : '';
+    var put0 = put; put = function (k, v, ss) { if (/sos(Track|UnitCode|AdminTok)$/.test(k)) return; put0(k, v, ss); }; }
   if (/[?&](t|unit)=/.test(q)) { try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} }
   call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (S.track || S.ucode || S.token || S.fam || S.lead) load(); else render(); });
 })();

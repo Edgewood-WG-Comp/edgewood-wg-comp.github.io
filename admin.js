@@ -32,7 +32,7 @@
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') +
       '<header class="adm"><img class=\"logo\" src=\"img/logo-160.png\" alt=\"SOS Crew – Edgewood Winter Guard\" width=\"72\" height=\"72\"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.canEdit === false ? ' <span class="adminpill spot">' + esc(S.who.role) + '</span>' : ' <span class="adminpill">' + esc(S.who.role || 'Admin') + '</span> <button class="adminpill spottog' + (S.spot ? ' spot' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter ' + (S.spot ? 'on' : 'off') + '</button>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
-        [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['hat', 'Hat']].concat(S.who.bgOn ? [['checks', 'Checks']] : []).concat([['review', 'Review']]).concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
+        [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['hat', 'Hat']].concat(S.who.bgOn ? [['checks', 'Checks']] : []).concat([['review', 'Review']].concat(S.who.canEdit !== false ? [['actas', 'Act as']] : [])).concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
         '<a class="np" href="board.html">Live board</a><a class="np" href="track.html">Unit tracker</a><a class="np" href="lead.html">Point-person view</a><a class="np" href="help/admin/">Admin help</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
@@ -42,7 +42,8 @@
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
 
   /** A Google ID token's own expiry (it lasts about an hour). Expired = sign in again (automatically if allowed); not expired = refused. */
-  function tokExpired(t) { var sm = String(t || '').match(/^sess_\w+\.(\d+)$/); if (sm) return Number(sm[1]) < Date.now() + 30000;   // Nov 22: 12-hour admin session
+  function tokExpired(t) { if (/^ok:/.test(String(t || ''))) return false;   // the local test server's stand-in tokens
+    var sm = String(t || '').match(/^sess_\w+\.(\d+)$/); if (sm) return Number(sm[1]) < Date.now() + 30000;   // Nov 22: 12-hour admin session
     try { var p = JSON.parse(atob(String(t).split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); return !p.exp || p.exp * 1000 < Date.now() + 30000; } catch (e) { return true; } }
   /** Nov 22 (Nick): trade the Google sign-in for the server's 12-hour admin session (Settings › Admin sign-in hours), shared by every tab on this device. */
   function swapForSession(cred) {
@@ -160,6 +161,18 @@
       r.rows.map(function (x) { return '<tr><td><button class="link" data-act="openfam" data-fid="' + esc(x.familyId) + '">' + esc(x.family) + '</button></td><td>' + esc(x.who + (x.group ? ' (' + x.group + ')' : '')) + '</td><td>' + x.owed + '</td><td>' + x.signed + '</td><td>' + x.worked + '</td><td><b>' + x.gap + '</b></td>' + (x.fee !== '' ? '<td>$' + x.fee + '</td>' : '') + '</tr>'; }).join('') +
       '</tbody></table></div><p class="muted">' + r.rows.length + ' line(s).</p></div>';
   }
+  // ---------- act as: open any page as someone else, in a new tab (simulation, troubleshooting)
+  var AS_PAGE = { fam: './', guide: 'track.html', lead: 'lead.html', track: 'track.html', unit: 'board.html' };
+  function renderActAs() {
+    var r = S.actas;
+    return '<div class="card"><h2>Act as someone</h2><p class="muted" style="margin-top:0">Opens their page in a new tab, exactly as they see it: a family, a homeroom guide\'s tracker, a point person, a tracker crew, or a director. A red bar shows you\'re acting as them. <b>Anything you change there is real.</b> Your own sign-ins aren\'t touched.</p>' +
+      '<div class="row"><input id="asq" placeholder="Name, email, family, station or guard" value="' + esc(S.asq || '') + '"><button class="sm" style="flex:none" data-act="assearch">Search</button></div></div>' +
+      (!r ? '<div class="card">' + spin() + '</div>' : '<div class="card">' + (r.results.length ? r.results.map(function (x) {
+        return '<div class="status-line"><div><div class="who">' + esc(x.label) + ' <span class="pill tbd">' + esc(x.type) + '</span></div><div class="whosub">' + esc(x.sub || '') + '</div></div><div class="acts">' +
+          x.links.map(function (l) { return '<a class="cbtn alt" target="_blank" rel="noopener" href="' + esc(AS_PAGE[l.kind] + '?as=' + l.kind + ':' + l.code + '&asl=' + encodeURIComponent(x.label)) + '">' + esc(l.text) + '</a>'; }).join(' ') + '</div></div>';
+      }).join('') : '<p class="muted">Nothing found. Families: type at least 2 letters of a name or email.</p>') + '</div>');
+  }
+  function loadActAs(q) { S.asq = q; S.actas = null; render(); return call({ action: 'adminActAs', q: q }).then(function (r) { if (r.error) flash('err', r.error); else S.actas = r; render(); }); }
   // ---------- name in the hat: candidates for Assigned spots
   function renderHat() {
     var h = S.hat; if (!h) return '<div class="card">' + spin() + '</div>';
@@ -310,7 +323,7 @@
 
   function render() {
     if (!S.who) return renderSignIn();
-    var body = S.view === 'units' ? renderUnits() : S.view === 'access' ? renderAccess() + trackersCard() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : S.view === 'hat' ? renderHat() : S.view === 'checks' ? renderChecks() : renderGrid();
+    var body = S.view === 'units' ? renderUnits() : S.view === 'access' ? renderAccess() + trackersCard() : S.view === 'setup' ? renderSetup() : S.view === 'fam' ? renderFam() : S.view === 'short' ? renderShort() : S.view === 'review' ? renderReview() : S.view === 'actas' ? renderActAs() : S.view === 'hat' ? renderHat() : S.view === 'checks' ? renderChecks() : renderGrid();
     var ro = S.who.canEdit === false || S.spot;
     app.innerHTML = header() + (ro ? '<div class="banner info">' + (S.who.canEdit === false ? 'View only. As ' + esc(S.who.role) + ' you see everything but can\'t change anything.' : 'Spotter mode is on: you can look around without changing anything. Tap SPOTTER ON in the title to edit again.') + '</div>' : '') + banner() + body + footer();
     if (ro) Array.prototype.forEach.call(app.querySelectorAll('.w, .postsel, .plc, [data-act=mark], [data-act=cancel], [data-act=xcancel], [data-act=place], [data-act=resend], [data-act=newday], [data-act=editshift], [data-act=postadd], [data-act=postdel], [data-act=leadnew], [data-act=leadedit], [data-act=leademail], [data-act=leaddel]'), function (el) { el.remove(); });
@@ -324,11 +337,11 @@
   function loadFlags() { S.flags = null; render(); return call({ action: 'adminFlags' }).then(function (r) { if (r.error) flash('err', r.error); else S.flags = r; render(); }); }
   function refresh() { return S.view === 'fam' && S.fam ? loadFam(S.fam.family.id) : loadDay(); }
   // Nov 21 (Nick): one place that opens a screen and loads only what that screen needs (nav pills and direct links both use it)
-  var VIEWS = ['grid', 'setup', 'units', 'fam', 'short', 'hat', 'checks', 'review', 'access'];
+  var VIEWS = ['grid', 'setup', 'units', 'fam', 'short', 'hat', 'checks', 'review', 'actas', 'access'];
   function goView(v) {
     S.view = v;
     if (v === 'units') loadUnits(); else if (v === 'access') { loadAccess(); loadUnits(); } else if (v === 'setup') loadSetup(); else if (v === 'short') loadShort();
-    else if (v === 'review') loadFlags(); else if (v === 'hat') loadHat(); else if (v === 'checks') loadChecks(); else if (v === 'grid') loadDay(); else render();
+    else if (v === 'review') loadFlags(); else if (v === 'hat') loadHat(); else if (v === 'actas') loadActAs(S.asq || ''); else if (v === 'checks') loadChecks(); else if (v === 'grid') loadDay(); else render();
   }
   // Direct links ("warp zones" from Nick's launcher): admin.html?v=short, ?v=fam&q=Smith (searches right away), ?date=YYYY-MM-DD (day grid).
   // Only the screen asked for loads; the day grid isn't fetched first. Sign-in and the server's access checks are unchanged.
@@ -361,6 +374,7 @@
     if (e.key !== 'Enter') return;
     if (e.target.id === 'addq') app.querySelector('[data-act=addsearch]').click();
     if (e.target.id === 'famq') app.querySelector('[data-act=famsearch]').click();
+    if (e.target.id === 'asq') app.querySelector('[data-act=assearch]').click();
     if (e.target.classList.contains('x-q')) app.querySelector('[data-act=afind]').click();
   });
   app.addEventListener('click', function (e) {
@@ -384,6 +398,7 @@
     }
     else if (act === 'famsearch') { S.famQ = document.getElementById('famq').value; call({ action: 'adminSearch', q: S.famQ }).then(function (r) { S.famHits = r.people || []; render(); }); }
     else if (act === 'openfam') loadFam(b.getAttribute('data-fid'));
+    else if (act === 'assearch') { loadActAs((document.getElementById('asq') || {}).value || ''); }
     else if (act === 'hatplace') { b.disabled = true; call({ action: 'adminHatPlace', hatId: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || ('Placed.' + (r.notPicked ? ' ' + r.notPicked + ' other(s) emailed that they weren\'t picked.' : ''))); loadHat(); }); }
     else if (act === 'hatclose') { if (!confirm('Mark everyone still pending on this spot as not picked and email them?')) return; b.disabled = true; call({ action: 'adminHatClose', shiftId: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || (r.notPicked + ' emailed.')); loadHat(); }); }
     else if (act === 'resend') { b.disabled = true; call({ action: 'adminSendCode', familyId: b.getAttribute('data-fid') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || r.msg); render(); }); }

@@ -105,6 +105,8 @@
   });
   var q = (location.search.match(/[?&]lead=([A-Za-z0-9]+)/) || [])[1];
   if (q) { try { history.replaceState(null, '', location.pathname); } catch (e) {} }
-  S.code = (q || get(KEY)).toUpperCase(); S.token = get(KEY + 'Tok', true) || (S.code ? '' : get((C.ENV === 'LIVE' ? '' : 'sbx_') + 'sosAdminTok', true));   // admins arriving from the admin page stay signed in
+  var AS = window.sosActAs ? sosActAs(['lead']) : null;   // admin acting as this point person: this tab only
+  if (AS) { var put0 = put; put = function (k, v, ss) { if (k === KEY || k === KEY + 'Tok') return; put0(k, v, ss); }; }
+  S.code = (AS ? AS.code : q || get(KEY)).toUpperCase(); S.token = AS ? '' : get(KEY + 'Tok', true) || (S.code ? '' : get((C.ENV === 'LIVE' ? '' : 'sbx_') + 'sosAdminTok', true));   // admins arriving from the admin page stay signed in
   call({ action: 'config' }).then(function (r) { if (!r.error) S.cfg = r; if (S.code || S.token) load(); else render(); });
 })();

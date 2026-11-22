@@ -33,6 +33,30 @@
     if (document.getElementById('sos-spin-css')) return;
     var st = document.createElement('style'); st.id = 'sos-spin-css'; st.textContent = css; document.head.appendChild(st);
   }
+  /* Act as (admins): ?as=<kind>:<code>&asl=<label> opens this tab as someone else. Kept in this tab only; a banner says so. */
+  (function () {
+    try {
+      var m = location.search.match(/[?&]as=(fam|guide|lead|track|unit):([A-Za-z0-9]+)/), l = location.search.match(/[?&]asl=([^&]*)/);
+      if (m) {
+        sessionStorage.setItem('sosActAs', JSON.stringify({ kind: m[1], code: m[2].toUpperCase(), label: l ? decodeURIComponent(l[1].replace(/\+/g, ' ')) : m[2] }));
+        history.replaceState(null, '', location.pathname + location.hash);
+      }
+      var a = JSON.parse(sessionStorage.getItem('sosActAs') || 'null');
+      window.sosActAs = function (kinds) { return a && (!kinds || kinds.indexOf(a.kind) >= 0) ? a : null; };
+      if (a) {
+        var bar = function () {
+          if (document.getElementById('sos-as')) return;
+          var d = document.createElement('div'); d.id = 'sos-as';
+          d.style.cssText = 'position:sticky;top:0;z-index:9998;background:#B91C1C;color:#fff;font:600 14px system-ui,sans-serif;padding:8px 12px;display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap';
+          d.innerHTML = '<span>Acting as <b></b> · changes are real</span><button style="border:0;border-radius:99px;padding:4px 12px;font:inherit;cursor:pointer">Stop</button>';
+          d.querySelector('b').textContent = a.label;
+          d.querySelector('button').onclick = function () { sessionStorage.removeItem('sosActAs'); try { window.close(); } catch (e) {} location.href = 'admin.html'; };
+          document.body.insertBefore(d, document.body.firstChild);
+        };
+        if (document.body) bar(); else document.addEventListener('DOMContentLoaded', bar);
+      }
+    } catch (e) { window.sosActAs = function () { return null; }; }
+  })();
   window.sosSpin = function (text) { return '<div class="sos-load">' + svg(64) + '<div>' + (text || 'Loading\u2026') + '</div></div>'; };
   // the page's own "Loading\u2026" placeholder
   function fillPlaceholders() {
