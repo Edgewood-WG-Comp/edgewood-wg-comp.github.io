@@ -165,7 +165,7 @@
   var AS_PAGE = { fam: './', guide: 'track.html', lead: 'lead.html', track: 'track.html', unit: 'board.html' };
   function renderActAs() {
     var r = S.actas;
-    return '<div class="card"><h2>Act as someone</h2><p class="muted" style="margin-top:0">Opens their page in a new tab, exactly as they see it: a family, a homeroom guide\'s tracker, a point person, a tracker crew, or a director. A red bar shows you\'re acting as them. <b>Anything you change there is real.</b> Your own sign-ins aren\'t touched.</p>' +
+    return '<div class="card"><h2>Act as someone</h2><p class="muted" style="margin-top:0">Opens their page in a new tab, exactly as they see it: a family, a guide\'s or crew\'s station screen, a point person, a tracker crew, or a director. A red bar shows you\'re acting as them. <b>Anything you change there is real.</b> Your own sign-ins aren\'t touched.</p>' +
       '<div class="row"><input id="asq" placeholder="Name, email, family, station or guard" value="' + esc(S.asq || '') + '"><button class="sm" style="flex:none" data-act="assearch">Search</button></div></div>' +
       (!r ? '<div class="card">' + spin() + '</div>' : '<div class="card">' + (r.results.length ? r.results.map(function (x) {
         return '<div class="status-line"><div><div class="who">' + esc(x.label) + ' <span class="pill tbd">' + esc(x.type) + '</span></div><div class="whosub">' + esc(x.sub || '') + '</div></div><div class="acts">' +
@@ -304,7 +304,7 @@
       '<textarea class="u-imp" rows="6" style="width:100%;font:13px ui-monospace,monospace">' + esc(S.uimp || '') + '</textarea><div class="row" style="margin-top:8px"><button class="sm ghost" data-act="uimp">Preview</button>' + (S.uprev ? '<button class="sm" data-act="uimpgo">Import ' + S.uprev.length + ' rows</button>' : '') + '</div>' +
       (S.uprev ? '<div style="margin-top:10px">' + S.uprev.map(function (x, i) { return '<div class="whosub">' + (i + 1) + '. <b>' + esc(x.name) + '</b> ' + (x.kind === 'marker' ? '<i>marker</i> ' + esc(x.perform) : esc([x.cls, x.toInsp && 'to insp ' + x.toInsp, x.insp && 'insp ' + x.insp, x.area && 'area ' + x.area, x.warmup && 'warm-up ' + x.warmup, x.toHold && 'to hold ' + x.toHold, x.hold && 'hold ' + x.hold, 'perform ' + x.perform].filter(Boolean).join(' · '))) + '</div>'; }).join('') + '</div>' : '') + '</div>';
     return imp + '<div class="card"><h2>Units · ' + u.units.length + '</h2><p class="muted">Order is performance order. Times are on ' + esc(u.date) + '. Home rooms come from the sheet\'s Areas tab (hallway sections; restrooms for changing).</p>' +
-      '<div class="row" style="flex-wrap:wrap"><a class="cbtn alt" href="board.html">Open live board</a><a class="cbtn" href="track.html">Open tracker</a></div>' +
+      '<div class="row" style="flex-wrap:wrap"><a class="cbtn alt" href="board.html">Open HQ board</a><a class="cbtn" href="track.html">Open station screens</a><a class="cbtn alt" href="live.html">Open public board</a></div>' +
       u.units.map(function (x) {
         if (S.uedit === x.id) return form(x);
         return '<div class="status-line"><div><div class="who">' + esc(x.order + '. ' + x.name) + (x.cls ? ' <span class="muted">' + esc(x.cls) + '</span>' : '') + '</div><div class="whosub">' +
@@ -320,13 +320,13 @@
     var form = function (t) {
       t = t || { steps: '' }; var all = /^all$/i.test(t.steps), has = function (id) { return all || new RegExp('(^|,\\s*)' + id + '(,|$)').test(t.steps.replace(/\s/g, '')); };
       return '<div class="editrow w"><div class="row"><div><label>Name</label><input class="t-n" value="' + esc(t.name || '') + '"></div><div><label>Google email (optional)</label><input class="t-e" type="email" value="' + esc(t.email || '') + '"></div></div>' +
-        '<label class="tog"><input type="checkbox" class="t-v"' + (t.view ? ' checked' : '') + '> Can see the live board</label>' +
+        '<label class="tog"><input type="checkbox" class="t-v"' + (t.view ? ' checked' : '') + '> Can see the HQ board</label>' +
         '<label class="tog"><input type="checkbox" class="t-all"' + (all ? ' checked' : '') + '> Can update every step</label>' +
         '<div class="chips">' + u.steps.map(function (s) { return '<label class="chip' + (has(s.id) ? ' on' : '') + '"><input type="checkbox" class="t-s" value="' + esc(s.id) + '"' + (has(s.id) ? ' checked' : '') + ' style="display:none">' + esc(s.name) + '</label>'; }).join('') + '</div>' +
         '<div class="row" style="margin-top:8px"><button class="sm" data-act="tsave" data-row="' + (t.row || '') + '">Save</button><button class="sm ghost" data-act="tedit" data-row="">Cancel</button></div></div>';
     };
     var base = location.href.replace(/admin\.html.*$/, '');
-    return '<div class="card"><h2>Unit trackers · ' + u.trackers.length + '</h2><p class="muted">People who aren\'t admins: pick whether they see the live board and which steps they can tap. Admins update everything; view-only roles see the board.</p>' +
+    return '<div class="card"><h2>Unit trackers · ' + u.trackers.length + '</h2><p class="muted">People who aren\'t admins: pick whether they see the HQ board and which steps they can tap. Admins update everything; view-only roles see the board.</p>' +
       u.trackers.map(function (t) {
         if (S.tedit === t.row) return form(t);
         return '<div class="status-line"><div><div class="who">' + esc(t.name || t.email) + '</div><div class="whosub">' + esc([t.email, t.view ? 'sees board' : 'no board', t.steps ? 'steps: ' + t.steps : 'no steps'].filter(String).join(' · ')) + '</div></div>' +

@@ -106,12 +106,12 @@
   // ---------- frame
   function header(sub) {
     var b = S.b || S.cfg || {};
-    var title = PUB ? 'Live board' : MODE === 'track' ? 'Contest day' : 'HQ board';
+    var title = PUB ? 'Live board' : MODE === 'track' ? 'Contest day' : S.b && S.b.me && S.b.me.kind === 'director' ? 'Live board' : 'HQ board';
     return (C.ENV !== 'LIVE' ? '<div class="sandbox">TEST SITE</div>' : '') + '<header><img class="logo" src="img/logo-160.png" alt="" width="72" height="72"><div class="eyebrow">' + esc(b.event || C.EVENT) + '</div><h1>' + esc(title) + ' <span class="bclock" id="clk">' + clock(now()) + '</span></h1><div class="hsub">' + esc(sub || '') + '</div></header>';
   }
   function footer() {
     if (PUB) return '<footer><span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>';
-    return '<footer>' + (MODE === 'track' ? (S.b && !S.b.me.view ? '' : '<a href="board.html">HQ board</a> · ') : '<a href="track.html">Station screens</a> · ') + '<a href="live.html">Public board</a> · <a href="help/contest-day/' + (MODE === 'track' ? 'unit-tracker' : 'live-board') + '/">Help</a> · <a href="./">Volunteer signup</a>' + (S.track || S.token ? ' · <button class="link" data-act="out">Sign out</button>' : '') + ' · <button class="link" data-theme-toggle>Theme: ' + (window.sosTheme ? sosTheme.label() : 'Auto') + '</button><span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>';
+    return '<footer>' + (MODE === 'track' ? (S.b && !S.b.me.view ? '' : '<a href="board.html">HQ board</a> · ') : '<a href="track.html">Station screens</a> · ') + '<a href="live.html">Public board</a> · <a href="help/contest-day/' + (MODE === 'track' ? ({ guide: 'guides', checkin: 'check-in-desk', hr: 'check-in-desk', unload: 'prop-crews', proparea: 'prop-crews', loading: 'prop-crews', inspect: 'inspection-door', door: 'inspection-door' }[S.screen || get(P + 'sosScreen') || (S.b && S.b.me.screen)] || 'guides') : 'hq-board') + '/">Help</a> · <a href="./">Volunteer signup</a>' + (S.track || S.token ? ' · <button class="link" data-act="out">Sign out</button>' : '') + ' · <button class="link" data-theme-toggle>Theme: ' + (window.sosTheme ? sosTheme.label() : 'Auto') + '</button><span class="legal">© 2026 NE Prints &amp; Design, LLC. All rights reserved.</span></footer>';
   }
   function banner() { return S.msg ? '<div class="banner ' + S.msg.kind + '">' + esc(S.msg.text) + '</div>' : ''; }
   function renderSignIn() {
@@ -288,7 +288,7 @@
         : '<div class="banner ok" style="margin:12px 0 0">All done. Thank you!</div>') + '</div>' +
       '<div class="card"><h2>All steps</h2>' + ids.map(function (id) {
         var dn = u.done[id];
-        return '<button class="stepbtn' + (dn ? ' done' : '') + '" data-act="' + (dn ? 'g-undo' : 'g-tap') + '" data-unit="' + esc(u.id) + '" data-step="' + id + '"><span>' + esc(stepName(id)) + '</span><span class="sm2">' + (dn ? '✓ ' + esc(doneTxt(dn)) : due(u, id) ? esc(due(u, id)) : '') + '</span></button>';
+        return '<button class="stepbtn' + (dn ? ' done' : '') + '" data-act="' + (dn ? 'g-undo' : 'g-tap') + '" data-unit="' + esc(u.id) + '" data-step="' + id + '"><span>' + esc(stepName(id)) + '</span><span class="sm2">' + (dn ? esc(doneTxt(dn)) : due(u, id) ? esc(due(u, id)) : '') + '</span></button>';
       }).join('') + '</div>' + guides(u);
     if (mine.length && me.kind === 'member') html += '<div class="card"><p style="margin:0" class="whosub">Need to hand this guard off? <button class="link" data-act="release">Hand off</button> and your coordinator or another guide picks them up.</p></div>';
     return html;
