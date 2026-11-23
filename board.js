@@ -205,7 +205,9 @@
     unload: function () {
       return '<p class="hint">Tap a school when its props or tarp come in the prop door.</p>' + list(function (u) {
         if (!hasProps(u)) return cpill('none', u.id, 'pr-restore', u.order + '. ' + u.name, PROPS_NOTE[u.props]);
-        var dn = u.done.P1; return dn ? cpill('done', u.id, 'pr-undo', u.order + '. ' + u.name, doneTxt(dn, 'Arrived'), ' data-step="P1"') : cpill('todo', u.id, 'pr-tap', u.order + '. ' + u.name, u.perform ? 'Performs ' + hm(u.perform) : '', ' data-step="P1"');
+        var dn = u.done.P1, later = !dn && current(u, ['Props']);
+        if (later) return cpill('done', u.id, 'pr-tap', u.order + '. ' + u.name, doneTxt({ at: later.at, by: later.by }, later.s.name.replace(/^Props /, '')) + ' · not checked in at the door', ' data-step="P1"');
+        return dn ? cpill('done', u.id, 'pr-undo', u.order + '. ' + u.name, doneTxt(dn, 'Arrived'), ' data-step="P1"') : cpill('todo', u.id, 'pr-tap', u.order + '. ' + u.name, u.perform ? 'Performs ' + hm(u.perform) : '', ' data-step="P1"');
       });
     },
     proparea: function () {
@@ -244,7 +246,7 @@
       return '<div class="clist">' + S.b.units.map(function (u) {
         var g = u.done.G1, d = u.done.D1;
         return '<div class="tile"><div class="th"><b>' + esc(u.order + '. ' + u.name) + '</b><span class="muted">' + (u.perform ? 'perform ' + esc(hm(u.perform)) : '') + '</span></div>' +
-          '<div class="whosub">Home room: ' + (u.hr ? esc(u.hr) : '<b>none yet</b>') + ' · ' + esc(hasProps(u) ? (u.done.P1 ? 'props here ' + clock(u.done.P1.at) : u.propsSet ? 'props coming' : 'props: not asked yet') : PROPS_NOTE[u.props]) + '</div>' +
+          '<div class="whosub">Home room: ' + (u.hr ? esc(u.hr) : '<b>none yet</b>') + ' · ' + esc(hasProps(u) ? (current(u, ['Props']) ? 'props here ' + clock((u.done.P1 || current(u, ['Props'])).at) : u.propsSet ? 'props coming' : 'props: not asked yet') : PROPS_NOTE[u.props]) + '</div>' +
           '<div class="two">' + (g ? cpill('done', u.id, 'ci-undo', 'Unit check-in', doneTxt(g), ' data-step="G1"') : cpill('todo', u.id, 'ci-unit', 'Unit check-in', 'Guard is here')) +
           (d ? cpill('done', u.id, 'ci-undo', 'Director check-in', doneTxt(d), ' data-step="D1"') : cpill('todo', u.id, 'ci-dir', 'Director check-in', 'Director or delegate')) + '</div></div>';
       }).join('') + '</div>';
@@ -341,7 +343,8 @@
   /* Director check-in: tells the director where their props are (or asks), and checks the guard in too if it's with them. */
   function checkDirector(u) {
     var h = '';
-    if (u.done.P1) h += '<p class="say">Your prop/tarp crew is already here (arrived ' + esc(clock(u.done.P1.at)) + ').</p>';
+    var pc = current(u, ['Props']);
+    if (pc) h += '<p class="say">Your prop/tarp crew is already here (' + esc(pc.s.name.replace(/^Props /, '').toLowerCase()) + ' ' + esc(clock(pc.at)) + ').</p>';
     else if (!hasProps(u)) h += '<p class="say">On file: ' + esc(PROPS_NOTE[u.props].toLowerCase()) + '.</p>';
     else h += '<p class="say">Ask: do you have a prop/tarp crew today?</p><div class="radios"><label><input type="radio" name="pq" value="separate"> Yes</label><label><input type="radio" name="pq" value="guard"> Just a tarp, with the guard</label><label><input type="radio" name="pq" value="none"> No</label></div>';
     if (u.done.G1) h += '<p class="say">Guard checked in ' + esc(clock(u.done.G1.at)) + '.</p>';

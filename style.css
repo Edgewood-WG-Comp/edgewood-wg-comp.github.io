@@ -186,7 +186,8 @@ html.dark .tpill.done{background:#134E4A;color:#CCFBF1}
 .cpill.done{background:var(--card);color:var(--sub);border:1px solid var(--line)}.cpill.done .cn{text-decoration:none;color:var(--sub)}
 .cpill.none{background:var(--bg);color:var(--sub);border:1px dashed var(--line)}.cpill.none .cn{font-weight:600}
 .cpill:disabled{opacity:1}
-html.dark .cpill.wait{background:#2A1B4D;color:#DDD6FE}
+html.dark .cpill.wait{background:#2A1B4D;color:#DDD6FE;border:1px dashed #7C3AED}
+html.dark .cpill.done{background:transparent;color:#9CA3AF;border:1px solid #3F3A55}html.dark .cpill.done .cn{color:#9CA3AF}
 .tile .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.tile .two .cpill{min-height:56px}.tile .two .cpill .cn{font-size:15px}
 .bigstep{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:84px;margin-top:14px;padding:12px 18px;border-radius:16px;font-size:21px;text-align:left;background:var(--accent)}
 .bigstep .sm2{font-size:14px;font-weight:500;opacity:.92;margin-top:2px}
