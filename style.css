@@ -175,3 +175,28 @@ html.dark .tpill.done{background:#134E4A;color:#CCFBF1}
 .donebox{margin:4px 14px 10px}.donebox summary{cursor:pointer;font-weight:700;color:var(--sub);padding:8px 0}.donebox .tiles{margin:6px 0 0}
 .nav2t{margin:0 14px 8px}
 .tpill.alt{background:#EDE9FE;color:var(--brand)}
+/* Nov 23 station screens */
+.scrnav{display:flex;gap:8px;overflow-x:auto;margin:12px 14px 0;padding-bottom:4px}.scrnav .tpill{flex:none;text-decoration:none;display:inline-flex;align-items:center}
+.hint{margin:12px 16px 0;color:var(--sub);font-size:14px}
+.clist{display:grid;gap:8px;margin:12px 14px}
+.cpill{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;width:100%;min-height:60px;padding:10px 16px;border-radius:14px;text-align:left;background:var(--brand);color:#fff}
+.cpill .cn{font-weight:700;font-size:17px}.cpill .cs{font-size:13px;font-weight:500;opacity:.9;margin-top:2px}
+.cpill.wait{background:#EDE9FE;color:var(--brand)}
+.cpill.hot{background:#F59E0B;color:#1C1300}
+.cpill.done{background:var(--card);color:var(--sub);border:1px solid var(--line)}.cpill.done .cn{text-decoration:none;color:var(--sub)}
+.cpill.none{background:var(--bg);color:var(--sub);border:1px dashed var(--line)}.cpill.none .cn{font-weight:600}
+.cpill:disabled{opacity:1}
+html.dark .cpill.wait{background:#2A1B4D;color:#DDD6FE}
+.tile .two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.tile .two .cpill{min-height:56px}.tile .two .cpill .cn{font-size:15px}
+.bigstep{display:flex;flex-direction:column;align-items:flex-start;width:100%;min-height:84px;margin-top:14px;padding:12px 18px;border-radius:16px;font-size:21px;text-align:left;background:var(--accent)}
+.bigstep .sm2{font-size:14px;font-weight:500;opacity:.92;margin-top:2px}
+.guide .gname{font-size:24px;font-weight:800;margin-bottom:4px}
+.units .umark{grid-column:1/-1}.umark{margin:4px 14px;padding:6px 12px;border-radius:10px;background:var(--line);color:var(--sub);font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.areas{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.area{border-radius:10px;padding:8px 10px;background:var(--bg);border-left:5px solid #14B8A6}
+.area.a-assigned{border-left-color:#F59E0B}.area.a-occupied{border-left-color:#7C3AED}.area.a-cleared{border-left-color:#14B8A6}
+.asklink{float:right;font-size:13px;margin:2px 0 6px 10px}
+.askbox .say{color:var(--ink);margin:0 0 10px}.askbox .say.warn{color:#92400E}
+.askbox .radios label,.askbox .chkline{display:flex;gap:8px;align-items:center;font-size:15px;font-weight:600;color:var(--ink);margin:6px 0}
+.askbox .radios input,.askbox .chkline input{width:20px;height:20px}
+.askbox select{margin-bottom:10px}

@@ -205,7 +205,7 @@
     var dp = S.day && S.day.date ? dayParts(S.day.date) : null;
     var html = header(S.fam.family.name) + banner();
     if (!S.fam.open) html += '<div class="banner info">Signups aren\'t open yet. You can look around; we\'ll email when they open.</div>';
-    if (S.fam.units && (S.fam.units.board || S.fam.units.track)) html += '<div class="card unitlinks"><h2>Contest day</h2><div class="row" style="flex-wrap:wrap">' + (S.fam.units.board ? '<a class="cbtn alt" href="board.html">Live unit board</a>' : '') + (S.fam.units.track ? '<a class="cbtn" href="track.html">Unit tracker</a>' : '') + '</div><p class="muted" style="margin-bottom:0">Sign in there with Google, or use your tracker link.</p></div>';
+    if (S.fam.units && (S.fam.units.board || S.fam.units.track)) html += '<div class="card unitlinks"><h2>Contest day</h2><div class="row" style="flex-wrap:wrap">' + (S.fam.units.board ? '<a class="cbtn alt" href="board.html">HQ board</a>' : '') + (S.fam.units.track ? '<a class="cbtn" href="track.html">My station screen</a>' : '') + '</div><p class="muted" style="margin-bottom:0">Sign in there with Google, or use your tracker link.</p></div>';
     html += statusCard() + bgCard() + mineCard() + calCard();
     if (S.day && S.day.days.length) {
       html += tabs();
@@ -237,6 +237,8 @@
     return call({ action: 'family', code: code }).then(function (r) {
       if (r.error) { if (r.badCode) { put(KEY, ''); S.code = ''; } flash('err', r.error); S.fam = null; return; }
       S.code = code; put(KEY, code); S.fam = r;
+      // contest day: volunteers with a station go straight to their screen (once a session, so Back returns here)
+      if (r.units && r.units.track && r.units.today && !(function () { try { return sessionStorage.getItem('sosLaunched'); } catch (x) { return '1'; } })()) { try { sessionStorage.setItem('sosLaunched', '1'); } catch (x) {} location.href = 'track.html'; return; }
       return loadDay(S.date);
     }).then(function () { S.busy = false; render(); });
   }

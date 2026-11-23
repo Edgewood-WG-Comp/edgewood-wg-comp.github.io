@@ -33,7 +33,7 @@
       '<header class="adm"><img class=\"logo\" src=\"img/logo-160.png\" alt=\"SOS Crew – Edgewood Winter Guard\" width=\"72\" height=\"72\"><div class="eyebrow">' + esc(d.event || C.EVENT) + ' · Admin</div><h1>' + esc(d.app || C.NAME) + (S.who ? (S.who.canEdit === false ? ' <span class="adminpill spot">' + esc(S.who.role) + '</span>' : ' <span class="adminpill">' + esc(S.who.role || 'Admin') + '</span> <button class="adminpill spottog' + (S.spot ? ' spot' : '') + '" data-act="spot" title="Look around without being able to change anything">Spotter ' + (S.spot ? 'on' : 'off') + '</button>') : '') + '</h1>' +
       (S.who ? '<div class="hsub">' + esc(S.who.email) + '</div><div class="navpills">' +
         [['grid', 'Day grid'], ['setup', 'Setup'], ['units', 'Units'], ['fam', 'Families'], ['short', 'Who\'s short'], ['hat', 'Hat']].concat(S.who.bgOn ? [['checks', 'Checks']] : []).concat([['review', 'Review']].concat(S.who.canEdit !== false ? [['actas', 'Act as']] : [])).concat(S.who.canManage ? [['access', 'Access']] : []).map(function (x) { return '<button class="np' + (S.view === x[0] ? ' on' : '') + '" data-act="view" data-v="' + x[0] + '">' + x[1] + '</button>'; }).join('') +
-        '<a class="np" href="board.html">Live board</a><a class="np" href="track.html">Unit tracker</a><a class="np" href="lead.html">Point-person view</a><a class="np" href="help/admin/">Admin help</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
+        '<a class="np" href="board.html">HQ board</a><a class="np" href="track.html">Station screens</a><a class="np" href="live.html">Public board</a><a class="np" href="lead.html">Point-person view</a><a class="np" href="help/admin/">Admin help</a><a class="np back" href="./">← My family page</a></div>' : '') + '</header>';
   }
   function footer() {
     return '<footer><a href="./">Volunteer signup</a>' + (S.who ? ' · <button class="link" data-act="out">Sign out</button>' : '') +
@@ -74,10 +74,10 @@
     html += '<div class="tabs">' + d.days.map(function (x) { var p = dayParts(x.date); return '<button class="tab' + (x.date === d.date ? ' on' : '') + '" data-act="day" data-date="' + x.date + '"><div class="d1">' + esc(p.dow) + '</div><div class="d2">' + esc(p.md) + '</div></button>'; }).join('') + '</div>';
     html += '<div class="banner ' + (b.tight ? 'warn' : 'info') + '">All days: <b>' + b.openSpots + '</b> open spots families can take' + (b.assignedOpen ? ' (+' + b.assignedOpen + ' coordinator-assigned)' : '') + ' · <b>' + b.stillOwed + '</b> shifts still owed and not signed up.' + (b.tight ? ' Not enough spots for what\'s owed: add spots, or families will need Extra Help.' : '') + '</div>';
     var cols = {}, rows = {};
-    d.shifts.forEach(function (s) { cols[s.start + '-' + s.end] = { start: s.start, end: s.end }; (rows[s.station] = rows[s.station] || {})[s.start + '-' + s.end] = s; });
+    d.shifts.forEach(function (s) { var k = s.block || s.start + '-' + s.end; cols[k] = { start: s.start, end: s.end, label: s.block ? s.label : '' }; (rows[s.station] = rows[s.station] || {})[k] = s; });
     var ck = Object.keys(cols).sort(function (a, b) { return cols[a].start - cols[b].start || cols[a].end - cols[b].end; }), rk = Object.keys(rows).sort();
     var tot = { f: 0, n: 0 }; d.shifts.forEach(function (s) { tot.f += Math.min(s.filled, s.spots); tot.n += s.spots; });
-    html += '<div class="card"><h2>' + tot.f + ' of ' + tot.n + ' spots filled</h2><div class="gridwrap"><table class="grid"><thead><tr><th>Station</th>' + ck.map(function (k) { return '<th>' + esc(short(cols[k].start) + '–' + short(cols[k].end)) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+    html += '<div class="card"><h2>' + tot.f + ' of ' + tot.n + ' spots filled</h2><div class="gridwrap"><table class="grid"><thead><tr><th>Station</th>' + ck.map(function (k) { return '<th>' + esc(cols[k].label || short(cols[k].start) + '–' + short(cols[k].end)) + '</th>'; }).join('') + '</tr></thead><tbody>' +
       rk.map(function (st) {
         return '<tr><th>' + esc(st) + '</th>' + ck.map(function (k) {
           var s = rows[st][k]; if (!s) return '<td class="na"></td>';
@@ -198,19 +198,28 @@
   var WHO = ['Anyone', 'HS & adults', 'HS students', 'Adults', 'Assigned'], STATUS = ['Draft', 'Final', 'Closed'];
   function opt(list, sel) { return list.map(function (x) { return '<option' + (x === sel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); }
   function toMin(t) { var p = String(t).split(':'); return +p[0] * 60 + +p[1]; }
+  function blockOpts(u, sel) { return '<option value="">Times below</option>' + (u.blocks || []).map(function (x) { return '<option value="' + esc(x.id) + '"' + (x.id === sel ? ' selected' : '') + '>' + esc(x.label + (x.start ? ' (' + label(toMin(x.start)) + '–' + label(toMin(x.end)) + ')' : '')) + '</option>'; }).join(''); }
+  function blocksCard(u) {
+    return '<div class="card"><h2>Shift blocks</h2><p class="muted">Shifts in a block show its name. Rename it, or add times later, and every shift in it follows. Times are optional.</p>' +
+      (u.blocks || []).concat([{ id: '', label: '', start: '', end: '', order: '' }]).map(function (x) {
+        return '<div class="row blk" style="margin-top:6px"><input class="bl-l" placeholder="' + (x.id ? '' : 'New block (e.g. Early)') + '" value="' + esc(x.label) + '"><input class="bl-s" type="time" value="' + esc(x.start) + '"><input class="bl-e" type="time" value="' + esc(x.end) + '"><input class="bl-o" type="number" min="1" style="max-width:70px" value="' + esc(x.order) + '"><button class="sm" data-act="blsave" data-id="' + esc(x.id) + '" style="flex:none">' + (x.id ? 'Save' : 'Add') + '</button></div>';
+      }).join('') + '</div>';
+  }
   function renderSetup() {
     var u = S.setup; if (!u) return '<div class="card">' + spin() + '</div>';
     if (!S.sdate) S.sdate = (u.days[0] || {}).date || '';
     var dayShifts = u.shifts.filter(function (s) { return s.date === S.sdate; });
-    var blocks = {}; dayShifts.forEach(function (s) { if (s.status !== 'Closed') blocks[s.start + '-' + s.end] = { start: s.start, end: s.end }; });
+    var blocks = {}; dayShifts.forEach(function (s) { if (s.status !== 'Closed' && !s.block && s.start) blocks[s.start + '-' + s.end] = { start: s.start, end: s.end }; });
     var bk = Object.keys(blocks).sort();
     var html = '<div class="tabs">' + u.days.map(function (x) { var p = dayParts(x.date); return '<button class="tab' + (x.date === S.sdate ? ' on' : '') + '" data-act="sday" data-date="' + x.date + '"><div class="d1">' + esc(p.dow) + '</div><div class="d2">' + esc(p.md) + '</div></button>'; }).join('') +
       '<button class="tab" data-act="newday"><div class="d1">Add</div><div class="d2">+ Day</div></button></div>';
+    html += blocksCard(u);
     if (S.newday) html += '<div class="card"><h2>New day</h2><label for="nd">Date</label><input id="nd" type="date"><p class="muted">Then add its shifts below.</p><button class="sm" data-act="newdayok">Use this date</button></div>';
     // add shift(s)
     html += '<div class="card w"><h2>Add a shift' + (S.sdate ? ' · ' + esc(dayParts(S.sdate).dow + ' ' + dayParts(S.sdate).md) : '') + '</h2>' +
       '<label for="as">Station</label><input id="as" list="stl" placeholder="Pick one, or type a new station name"><datalist id="stl">' + u.stations.map(function (x) { return '<option value="' + esc(x) + '">'; }).join('') + '</datalist>' +
-      '<div class="row"><div><label for="ast">Start</label><input id="ast" type="time" value="08:00"></div><div><label for="aen">End</label><input id="aen" type="time" value="11:00"></div><div><label for="asp">Spots</label><input id="asp" type="number" min="0" value="2"></div></div>' +
+      '<div class="row"><div><label for="abl">Block</label><select id="abl">' + blockOpts(u, (u.blocks[0] || {}).id || '') + '</select></div><div><label for="ast">Start</label><input id="ast" type="time" value="08:00"></div><div><label for="aen">End</label><input id="aen" type="time" value="11:00"></div><div><label for="asp">Spots</label><input id="asp" type="number" min="0" value="2"></div></div>' +
+      '<div class="whosub">With a block picked, the times come from the block (leave them as they are).</div>' +
       '<div class="row"><div><label for="awh">Who can sign up</label><select id="awh">' + opt(WHO, 'Anyone') + '</select></div><div><label for="aco">Counts as</label><input id="aco" type="number" min="0" step="0.5" value="1"></div><div><label for="ass">Status</label><select id="ass">' + opt(STATUS, 'Draft') + '</select></div></div>' +
       '<label for="ano">Note (optional, shown to families)</label><input id="ano">' +
       (bk.length ? '<label class="tog"><input type="checkbox" id="aall"> Add at every time slot this day (' + bk.map(function (k) { return label(toMin(blocks[k].start)) + '–' + label(toMin(blocks[k].end)); }).join(', ') + ') instead of the times above</label>' : '') +
@@ -222,13 +231,13 @@
       var pl = (u.posts || {})[st] || [];
       html += '<div class="card"><h2>' + esc(st) + '</h2><div class="whosub">Posts: ' + (pl.length ? pl.map(function (x) { return '<span class="pill tbd">' + esc(x) + ' <button class="link" data-act="postdel" data-st="' + esc(st) + '" data-post="' + esc(x) + '" title="Remove">×</button></span>'; }).join(' ') : 'none') +
         ' · <button class="link" data-act="postadd" data-st="' + esc(st) + '">+ post</button></div><div class="whosub">Point person: ' + (leads.length ? leads.map(function (l) { return esc(l.name + (l.day ? ' (' + l.day + ')' : '')); }).join(', ') : 'none yet') + ' · <button class="link" data-act="leadnew" data-st="' + esc(st) + '">+ point person</button></div>' +
-        byStation[st].sort(function (a, b) { return a.start < b.start ? -1 : 1; }).map(function (s) {
+        byStation[st].sort(function (a, b) { return a.sort - b.sort; }).map(function (s) {
           if (S.edit === s.id) return '<div class="editrow" data-id="' + esc(s.id) + '"><div class="row"><div><label>Station</label><input class="e-st" value="' + esc(s.station) + '" list="stl"></div><div><label>Date</label><input class="e-dt" type="date" value="' + esc(s.date) + '"></div></div>' +
-            '<div class="row"><div><label>Start</label><input class="e-s" type="time" value="' + esc(s.start) + '"></div><div><label>End</label><input class="e-e" type="time" value="' + esc(s.end) + '"></div><div><label>Spots</label><input class="e-sp" type="number" min="0" value="' + s.spots + '"></div></div>' +
+            '<div class="row"><div><label>Block</label><select class="e-b">' + blockOpts(u, s.block) + '</select></div><div><label>Start</label><input class="e-s" type="time" value="' + esc(s.start) + '"></div><div><label>End</label><input class="e-e" type="time" value="' + esc(s.end) + '"></div><div><label>Spots</label><input class="e-sp" type="number" min="0" value="' + s.spots + '"></div></div>' +
             '<div class="row"><div><label>Who</label><select class="e-w">' + opt(WHO, s.who) + '</select></div><div><label>Counts as</label><input class="e-c" type="number" min="0" step="0.5" value="' + s.counts + '"></div><div><label>Status</label><select class="e-stt">' + opt(STATUS, s.status) + '</select></div></div>' +
             '<label>Note</label><input class="e-n" value="' + esc(s.notes) + '">' + (s.filled ? '<p class="muted">' + s.filled + ' signed up. Changing the date or time emails their families.</p>' : '') +
             '<div class="row" style="margin-top:8px"><button class="sm" data-act="saveshift" data-id="' + esc(s.id) + '">Save</button><button class="sm ghost" data-act="editshift" data-id="">Cancel</button></div></div>';
-          return '<div class="status-line' + (s.status === 'Closed' ? ' closed' : '') + '"><div><div class="who">' + esc(label(toMin(s.start)) + ' – ' + label(toMin(s.end))) + ' <span class="muted">· ' + s.filled + ' of ' + s.spots + '</span></div><div class="whosub">' + esc([s.who, s.counts !== 1 ? 'counts ' + s.counts : '', s.status, s.notes, s.id].filter(String).join(' · ')) + '</div></div><button class="chk" data-act="editshift" data-id="' + esc(s.id) + '">Edit</button></div>';
+          return '<div class="status-line' + (s.status === 'Closed' ? ' closed' : '') + '"><div><div class="who">' + esc(s.label || label(toMin(s.start)) + ' – ' + label(toMin(s.end))) + ' <span class="muted">· ' + s.filled + ' of ' + s.spots + '</span></div><div class="whosub">' + esc([s.who, s.counts !== 1 ? 'counts ' + s.counts : '', s.status, s.notes, s.id].filter(String).join(' · ')) + '</div></div><button class="chk" data-act="editshift" data-id="' + esc(s.id) + '">Edit</button></div>';
         }).join('') + '</div>';
     });
     // point people
@@ -283,21 +292,26 @@
     var form = function (x) {
       x = x || {}; var f = function (cls, lab, val, type) { return '<div><label>' + lab + '</label><input class="' + cls + '"' + (type ? ' type="' + type + '"' : '') + ' value="' + esc(val || '') + '"></div>'; };
       return '<div class="editrow w"><div class="row">' + f('u-n', 'Unit', x.name) + f('u-c', 'Class', x.cls) + f('u-o', 'Order', x.order, 'number') + '</div>' +
-        '<div class="row">' + f('u-ci', 'Check-in', x.checkin, 'time') + f('u-w', 'Warm-up', x.warmup, 'time') + f('u-p', 'Perform', x.perform, 'time') + '</div>' +
+        '<div class="row">' + f('u-ti', 'To inspection', x.toInsp, 'time') + f('u-i', 'Inspection', x.insp, 'time') + f('u-w', 'Warm-up', x.warmup, 'time') + '</div>' +
+        '<div class="row">' + f('u-th', 'To holding', x.toHold, 'time') + f('u-h', 'Holding', x.hold, 'time') + f('u-p', 'Perform', x.perform, 'time') + '</div>' +
+        '<div class="row">' + f('u-a', 'Warm-up area', x.area) + f('u-hr', 'Home room (Areas tab name)', x.hr) + '</div>' +
         '<div class="row">' + f('u-d', 'Director', x.director) + (u.contact ? f('u-dp', 'Director cell', x.phone, 'tel') + f('u-de', 'Director email', x.email, 'email') : '') + '</div>' + (u.contact ? '' : '<div class="whosub">Director phone and email are hidden for your role.</div>') +
         '<label>Props</label><select class="u-pr">' + [['', 'Not set yet: check-in asks the director'], ['separate', 'Props & tarp (tracked on their own)'], ['none', 'No props or tarp'], ['guard', 'Tarp travels with the guard']].map(function (o) { return '<option value="' + o[0] + '"' + ((x.propsSet ? x.props : '') === o[0] ? ' selected' : '') + '>' + o[1] + '</option>'; }).join('') + '</select>' +
         '<label>Notes</label><input class="u-no" value="' + esc(x.notes || '') + '">' +
         '<div class="row" style="margin-top:8px"><button class="sm" data-act="usave" data-id="' + esc(x.id || '') + '">Save</button><button class="sm ghost" data-act="uedit" data-id="">Cancel</button></div></div>';
     };
-    return '<div class="card"><h2>Units · ' + u.units.length + '</h2><p class="muted">Order is performance order. Times are on ' + esc(u.date) + '. The live board warns 10 minutes before warm-up and 5 before performance.</p>' +
+    var imp = '<div class="card"><h2>Import the IHSCGA schedule</h2><p class="muted">Copy the whole schedule table out of the IHSCGA PDF (or a sheet) and paste it here. Guards are matched by name, so re-importing a new version only changes times; everything already tapped stays. Break and Awards lines become markers on the board; "Exhibition - Name" lines become units.</p>' +
+      '<textarea class="u-imp" rows="6" style="width:100%;font:13px ui-monospace,monospace">' + esc(S.uimp || '') + '</textarea><div class="row" style="margin-top:8px"><button class="sm ghost" data-act="uimp">Preview</button>' + (S.uprev ? '<button class="sm" data-act="uimpgo">Import ' + S.uprev.length + ' rows</button>' : '') + '</div>' +
+      (S.uprev ? '<div style="margin-top:10px">' + S.uprev.map(function (x, i) { return '<div class="whosub">' + (i + 1) + '. <b>' + esc(x.name) + '</b> ' + (x.kind === 'marker' ? '<i>marker</i> ' + esc(x.perform) : esc([x.cls, x.toInsp && 'to insp ' + x.toInsp, x.insp && 'insp ' + x.insp, x.area && 'area ' + x.area, x.warmup && 'warm-up ' + x.warmup, x.toHold && 'to hold ' + x.toHold, x.hold && 'hold ' + x.hold, 'perform ' + x.perform].filter(Boolean).join(' · '))) + '</div>'; }).join('') + '</div>' : '') + '</div>';
+    return imp + '<div class="card"><h2>Units · ' + u.units.length + '</h2><p class="muted">Order is performance order. Times are on ' + esc(u.date) + '. Home rooms come from the sheet\'s Areas tab (hallway sections; restrooms for changing).</p>' +
       '<div class="row" style="flex-wrap:wrap"><a class="cbtn alt" href="board.html">Open live board</a><a class="cbtn" href="track.html">Open tracker</a></div>' +
       u.units.map(function (x) {
         if (S.uedit === x.id) return form(x);
         return '<div class="status-line"><div><div class="who">' + esc(x.order + '. ' + x.name) + (x.cls ? ' <span class="muted">' + esc(x.cls) + '</span>' : '') + '</div><div class="whosub">' +
-          esc([x.checkin ? 'check-in ' + x.checkin : '', x.warmup ? 'warm-up ' + x.warmup : '', x.perform ? 'perform ' + x.perform : '', x.director, x.phone].filter(String).join(' · ')) + '</div></div>' +
+          esc([x.insp ? 'inspection ' + x.insp : '', x.warmup ? 'warm-up ' + x.warmup + (x.area ? ' (' + x.area + ')' : '') : '', x.perform ? 'perform ' + x.perform : '', x.hr ? 'HR ' + x.hr : '', x.director, x.phone].filter(String).join(' · ')) + '</div></div>' +
           '<div class="acts"><button class="chk" data-act="ucopy" data-link="' + esc(x.link) + '">Copy director link</button><button class="chk w" data-act="uedit" data-id="' + esc(x.id) + '">Edit</button><button class="chk ns w" data-act="udel" data-id="' + esc(x.id) + '" data-name="' + esc(x.name) + '">Remove</button></div></div>';
       }).join('') + (S.uedit === 'new' ? form(null) : '<div class="w" style="margin-top:10px"><button class="sm ghost" data-act="uedit" data-id="new">+ Add a unit</button></div>') + '</div>' +
-      '<div class="card"><h2>Steps</h2><p class="muted">Rename or add steps on the sheet\'s Steps tab.</p>' + ['Director', 'Guard', 'Props', 'Together'].filter(function (t) { return u.steps.some(function (s) { return s.track === t; }); }).map(function (t) { return '<div class="whosub"><b>' + t + ':</b> ' + esc(u.steps.filter(function (s) { return s.track === t; }).map(function (s) { return s.name; }).join(' → ')) + '</div>'; }).join('') + '</div>';
+      '<div class="card"><h2>Steps</h2><p class="muted">Rename or add steps on the sheet\'s Steps tab.</p>' + ['Director', 'Guard', 'Equipment', 'Props', 'Together'].filter(function (t) { return u.steps.some(function (s) { return s.track === t; }); }).map(function (t) { return '<div class="whosub"><b>' + t + ':</b> ' + esc(u.steps.filter(function (s) { return s.track === t; }).map(function (s) { return s.name; }).join(' → ')) + '</div>'; }).join('') + '</div>';
   }
   function loadUnits() { return call({ action: 'adminUnits' }).then(function (r) { if (r.error) flash('err', r.error); else S.units = r; render(); }); }
   // trackers (in Access, super admins)
@@ -411,15 +425,17 @@
       var v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; }, all = document.getElementById('aall');
       var base = { station: v('as'), date: S.sdate, spots: v('asp'), who: v('awh'), counts: v('aco'), status: v('ass'), notes: v('ano') }, items = [];
       if (!S.sdate) { flash('err', 'Pick a day first (or + Day).'); return render(); }
-      if (all && all.checked) { var seen = {}; S.setup.shifts.filter(function (s) { return s.date === S.sdate && s.status !== 'Closed'; }).forEach(function (s) { var k = s.start + '-' + s.end; if (!seen[k]) { seen[k] = 1; items.push(Object.assign({}, base, { start: s.start, end: s.end })); } }); }
-      else items.push(Object.assign({}, base, { start: v('ast'), end: v('aen') }));
+      if (all && all.checked) { var seen = {}; S.setup.shifts.filter(function (s) { return s.date === S.sdate && s.status !== 'Closed' && !s.block && s.start; }).forEach(function (s) { var k = s.start + '-' + s.end; if (!seen[k]) { seen[k] = 1; items.push(Object.assign({}, base, { start: s.start, end: s.end })); } }); }
+      else items.push(Object.assign({}, base, v('abl') ? { block: v('abl') } : { start: v('ast'), end: v('aen') }));
       b.disabled = true;
       call({ action: 'adminShiftAdd', items: items }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || items.length + ' shift(s) added to ' + base.station + '.'); S.keepDay = false; loadSetup(); });
     }
     else if (act === 'editshift') { S.edit = b.getAttribute('data-id') || ''; render(); }
+    else if (act === 'blsave') { var br = b.closest('.blk'), bv = function (c) { return br.querySelector(c).value.trim(); }; b.disabled = true;
+      call({ action: 'adminBlockSave', id: b.getAttribute('data-id'), label: bv('.bl-l'), start: bv('.bl-s'), end: bv('.bl-e'), order: bv('.bl-o') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Block saved: every shift in it shows the change.'); loadSetup(); }); }
     else if (act === 'saveshift') {
       var row = b.closest('.editrow'), g = function (c) { return row.querySelector(c).value.trim(); };
-      var d2 = { action: 'adminShiftSave', id: b.getAttribute('data-id'), station: g('.e-st'), date: g('.e-dt'), start: g('.e-s'), end: g('.e-e'), spots: g('.e-sp'), who: g('.e-w'), counts: g('.e-c'), status: g('.e-stt'), notes: g('.e-n') };
+      var d2 = { action: 'adminShiftSave', id: b.getAttribute('data-id'), station: g('.e-st'), date: g('.e-dt'), block: g('.e-b'), start: g('.e-s'), end: g('.e-e'), spots: g('.e-sp'), who: g('.e-w'), counts: g('.e-c'), status: g('.e-stt'), notes: g('.e-n') };
       b.disabled = true;
       call(d2).then(function (r) {
         if (r.confirm) { if (!confirm(r.error)) { b.disabled = false; return; } d2.force = true; return call(d2); }
@@ -458,8 +474,13 @@
     else if (act === 'rdel') { if (!confirm('Remove the role ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
       call({ action: 'adminRoleDelete', row: b.getAttribute('data-row'), name: b.getAttribute('data-name') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Role removed.'); loadAccess(); }); }
     else if (act === 'uedit') { S.uedit = b.getAttribute('data-id') || ''; render(); }
+    else if (act === 'uimp' || act === 'uimpgo') { var ta = document.querySelector('.u-imp'); S.uimp = ta ? ta.value : S.uimp; b.disabled = true;
+      call({ action: 'adminScheduleImport', text: S.uimp, apply: act === 'uimpgo' }).then(function (r) {
+        if (r.error) { flash('err', r.error); S.uprev = null; render(); return; }
+        if (r.preview) { S.uprev = r.preview; render(); return; }
+        S.uprev = null; S.uimp = ''; flash('ok', 'Schedule imported: ' + r.updated + ' updated, ' + r.added + ' added.' + (r.missing.length ? ' Not in this schedule (left as is): ' + r.missing.join(', ') + '.' : '')); loadUnits(); }); }
     else if (act === 'usave') { var ue = b.closest('.editrow'), uv = function (c) { return ue.querySelector(c).value.trim(); }; b.disabled = true;
-      call({ action: 'adminUnitSave', id: b.getAttribute('data-id') || '', name: uv('.u-n'), cls: uv('.u-c'), order: uv('.u-o'), checkin: uv('.u-ci'), warmup: uv('.u-w'), perform: uv('.u-p'), director: uv('.u-d'), phone: S.units.contact ? uv('.u-dp') : '', email: S.units.contact ? uv('.u-de') : '', notes: uv('.u-no'), props: uv('.u-pr') })
+      call({ action: 'adminUnitSave', id: b.getAttribute('data-id') || '', name: uv('.u-n'), cls: uv('.u-c'), order: uv('.u-o'), toInsp: uv('.u-ti'), insp: uv('.u-i'), warmup: uv('.u-w'), toHold: uv('.u-th'), hold: uv('.u-h'), perform: uv('.u-p'), area: uv('.u-a'), hr: uv('.u-hr'), director: uv('.u-d'), phone: S.units.contact ? uv('.u-dp') : '', email: S.units.contact ? uv('.u-de') : '', notes: uv('.u-no'), props: uv('.u-pr') })
         .then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Unit saved.'); if (!r.error) S.uedit = ''; loadUnits(); }); }
     else if (act === 'udel') { if (!confirm('Remove ' + b.getAttribute('data-name') + '?')) return; b.disabled = true;
       call({ action: 'adminUnitDelete', id: b.getAttribute('data-id') }).then(function (r) { flash(r.error ? 'err' : 'ok', r.error || 'Removed.'); loadUnits(); }); }
