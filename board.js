@@ -206,7 +206,7 @@
       return '<p class="hint">Tap a school when its props or tarp come in the prop door.</p>' + list(function (u) {
         if (!hasProps(u)) return cpill('none', u.id, 'pr-restore', u.order + '. ' + u.name, PROPS_NOTE[u.props]);
         var dn = u.done.P1, later = !dn && current(u, ['Props']);
-        if (later) return cpill('done', u.id, 'pr-tap', u.order + '. ' + u.name, doneTxt({ at: later.at, by: later.by }, later.s.name.replace(/^Props /, '')) + ' · not checked in at the door', ' data-step="P1"');
+        if (later) return cpill('done', u.id, 'pr-tap', u.order + '. ' + u.name, '✓ Here (no door check-in) · now: ' + later.s.name.replace(/^Props /, '').toLowerCase() + ' ' + clock(later.at), ' data-step="P1"');
         return dn ? cpill('done', u.id, 'pr-undo', u.order + '. ' + u.name, doneTxt(dn, 'Arrived'), ' data-step="P1"') : cpill('todo', u.id, 'pr-tap', u.order + '. ' + u.name, u.perform ? 'Performs ' + hm(u.perform) : '', ' data-step="P1"');
       });
     },
@@ -217,7 +217,7 @@
         if (!reachedId(u, 'P2')) return cpill(u.done.P1 ? 'todo' : 'wait', u.id, 'pr-tap', nm, 'Next: in holding · ' + (u.done.P1 ? 'arrived ' + clock(u.done.P1.at) : 'not arrived yet'), ' data-step="P2"');
         if (!reachedId(u, 'P3')) return cpill(u.done.G6 || u.done.G7 ? 'hot' : 'todo', u.id, 'pr-tap', nm, 'Next: staged at warm-up' + (u.toHold ? ' by ' + hm(u.toHold) : '') + ' · in holding ' + clock((u.done.P2 || { at: now() }).at), ' data-step="P3"');
         var last = u.done.P3 ? 'P3' : 'P2', dn = u.done[last];
-        var with_ = reachedId(u, 'T1') ? 'With the guard' : doneTxt(dn, last === 'P3' ? 'Staged' : 'In holding');
+        var with_ = u.done.P5 ? '✓ Loaded out ' + clock(u.done.P5.at) : u.done.P4 ? 'Heading to loading ' + clock(u.done.P4.at) : reachedId(u, 'T1') ? 'With the guard' : doneTxt(dn, last === 'P3' ? 'Staged' : 'In holding');
         return cpill('done', u.id, 'pr-undo', nm, with_, ' data-step="' + last + '"');
       });
     },
