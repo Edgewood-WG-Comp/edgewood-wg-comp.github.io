@@ -5,7 +5,8 @@
 (function () {
   // Each prop is drawn around its spin point (0,0) in a 100×100 box. Original drawings.
   var PROPS = {
-    flag: '<g transform="scale(.8)"><rect x="-3" y="-44" width="6" height="88" rx="3" fill="#C9C3D9"/><circle cx="0" cy="44" r="4" fill="#9A93B0"/><circle cx="0" cy="-44" r="4" fill="#9A93B0"/>' +
+    // Spins clockwise, so the silk is drawn on the left of the pole: it trails the pole like a real spin (Nov 25, guard director)
+    flag: '<g transform="scale(-.8,.8)"><rect x="-3" y="-44" width="6" height="88" rx="3" fill="#C9C3D9"/><circle cx="0" cy="44" r="4" fill="#9A93B0"/><circle cx="0" cy="-44" r="4" fill="#9A93B0"/>' +
       '<path d="M3 -42 C 22 -46, 30 -30, 44 -36 L 44 -6 C 30 0, 22 -16, 3 -12 Z" fill="#7C3AED"/><path d="M3 -27 C 22 -31, 30 -15, 44 -21 L 44 -6 C 30 0, 22 -16, 3 -12 Z" fill="#FBBF24"/></g>',
     rifle: '<g transform="rotate(-8)"><path d="M-44 -6 L 24 -6 L 46 -3 L 46 4 L 22 4 L 15 15 L 1 15 L 6 4 L -44 4 Z" fill="#FFFFFF" stroke="#4C1D95" stroke-width="3" stroke-linejoin="round"/>' +
       '<rect x="-32" y="-6" width="6" height="10" fill="#7C3AED"/><rect x="-8" y="-6" width="6" height="10" fill="#7C3AED"/><rect x="31" y="-5" width="5" height="9" fill="#FBBF24"/>' +

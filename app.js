@@ -56,12 +56,15 @@
       '<div style="margin-top:12px"><button class="ghost" data-act="signin" style="width:100%">Open my family page</button></div></details></div>' + footer();
     if (gid) googleButton(gid);
   }
+  function sizes() { return (S.fam && S.fam.shirtSizes) || (S.cfg && S.cfg.shirtSizes) || []; }
+  function shirtOpts(sel) { return '<option value="">Shirt size…</option>' + sizes().map(function (x) { return '<option' + (x === sel ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join(''); }
   function groupOpts(sel) { return '<option value="">Group…</option>' + ((S.cfg && S.cfg.groups) || []).map(function (g) { return '<option' + (g === sel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join(''); }
   function renderRegister() {
     var r = S.reg;
     var kid = function (k, i) {
       return '<div class="kid" data-i="' + i + '"><div class="row"><div><label>Student first name</label><input class="kf" value="' + esc(k.first) + '"></div><div><label>Last name</label><input class="kl" value="' + esc(k.last) + '" placeholder="' + esc(r.last || '') + '"></div></div>' +
-        '<div class="row"><div><label>Group</label><select class="kg">' + groupOpts(k.group) + '</select></div><div><label>Student\'s cell, if they have one (for texts)</label><input class="kp" type="tel" value="' + esc(k.phone || '') + '"></div></div>' + (i ? '<button class="link" data-act="kidrm" data-i="' + i + '">Remove</button>' : '') + '</div>';
+        '<div class="row"><div><label>Group</label><select class="kg">' + groupOpts(k.group) + '</select></div><div><label>Student\'s cell, if they have one (for texts)</label><input class="kp" type="tel" value="' + esc(k.phone || '') + '"></div></div>' +
+        (sizes().length ? '<label>Shirt size</label><select class="ks">' + shirtOpts(k.shirt) + '</select>' : '') + (i ? '<button class="link" data-act="kidrm" data-i="' + i + '">Remove</button>' : '') + '</div>';
     };
     app.innerHTML = header('Set up your family') + banner() +
       '<div class="card"><h2>You</h2>' +
@@ -69,6 +72,7 @@
       (r.verified ? '<div class="muted">Verified with Google</div>' : '') +
       '<div class="row"><div><label for="rf">First name</label><input id="rf" value="' + esc(r.first || '') + '" autocomplete="given-name"></div><div><label for="rl">Last name</label><input id="rl" value="' + esc(r.last || '') + '" autocomplete="family-name"></div></div>' +
       '<label for="rp">Cell phone (for texts)</label><input id="rp" type="tel" autocomplete="tel" value="' + esc(r.phone || '') + '">' +
+      (sizes().length ? '<label for="rsz">Your shirt size</label><select id="rsz">' + shirtOpts(r.shirt) + '</select><div class="whosub">Every volunteer gets an event shirt. You can change sizes later on your family page.</div>' : '') +
       '<label class="tog"><input type="checkbox" id="rstu"' + (r.isStudent ? ' checked' : '') + '> I am a current student</label>' +
       (r.isStudent ? '<label for="rg">Your group</label><select id="rg">' + groupOpts(r.group) + '</select>' : '') + '</div>' +
       '<div class="card"><h2>' + (r.isStudent ? 'Brothers or sisters in the program (optional)' : 'Your students') + '</h2><p class="muted">Everyone in JH Band, HS Band, Winter Guard or Winter Percussion.</p>' + r.kids.map(kid).join('<hr>') +
@@ -76,16 +80,17 @@
       '<div class="card"><details' + (r.p2open ? ' open' : '') + '><summary>' + (r.isStudent ? 'Add a parent (optional)' : 'Add a second parent (optional)') + '</summary>' +
       '<div class="row"><div><label for="p2f">First name</label><input id="p2f" value="' + esc(r.p2first || '') + '"></div><div><label for="p2l">Last name</label><input id="p2l" value="' + esc(r.p2last || '') + '"></div></div>' +
       '<label for="p2e">Email (they can sign in too)</label><input id="p2e" type="email" value="' + esc(r.p2email || '') + '">' +
-      '<label for="p2p">Cell phone (for texts)</label><input id="p2p" type="tel" value="' + esc(r.p2phone || '') + '"></details></div>' +
+      '<label for="p2p">Cell phone (for texts)</label><input id="p2p" type="tel" value="' + esc(r.p2phone || '') + '">' +
+      (sizes().length ? '<label for="p2s">Shirt size (they can pick it later)</label><select id="p2s">' + shirtOpts(r.p2shirt) + '</select>' : '') + '</details></div>' +
       '<div class="card"><button data-act="register" style="width:100%">Create my family</button>' +
       '<div style="text-align:center;margin-top:10px"><button class="link" data-act="regcancel">Back</button></div></div>' + footer();
   }
   function readRegister() {
     var r = S.reg, v = function (id) { var e = document.getElementById(id); return e ? e.value.trim() : ''; };
     if (!r.verified) r.email = v('rem');
-    r.first = v('rf'); r.last = v('rl'); r.phone = v('rp'); r.p2first = v('p2f'); r.p2last = v('p2l'); r.p2email = v('p2e'); r.p2phone = v('p2p'); var su = document.getElementById('rstu'); r.isStudent = !!(su && su.checked); r.group = v('rg') || r.group;
+    r.first = v('rf'); r.last = v('rl'); r.phone = v('rp'); r.p2first = v('p2f'); r.p2last = v('p2l'); r.p2email = v('p2e'); r.p2phone = v('p2p'); r.shirt = v('rsz'); r.p2shirt = v('p2s'); var su = document.getElementById('rstu'); r.isStudent = !!(su && su.checked); r.group = v('rg') || r.group;
     r.p2open = !!(r.p2first || r.p2email);
-    r.kids = Array.prototype.map.call(document.querySelectorAll('.kid'), function (el) { return { first: el.querySelector('.kf').value.trim(), last: el.querySelector('.kl').value.trim(), group: el.querySelector('.kg').value, phone: el.querySelector('.kp').value.trim() }; });
+    r.kids = Array.prototype.map.call(document.querySelectorAll('.kid'), function (el) { return { first: el.querySelector('.kf').value.trim(), last: el.querySelector('.kl').value.trim(), group: el.querySelector('.kg').value, phone: el.querySelector('.kp').value.trim(), shirt: el.querySelector('.ks') ? el.querySelector('.ks').value : '' }; });
     if (r.isStudent) r.kids = r.kids.filter(function (k) { return k.first; });
   }
   var gsiLoading = false;
@@ -116,6 +121,14 @@
       var pill = l.needSignup <= 0 ? '<span class="pill done">Signed up ✓</span>' : '<span class="pill need">' + l.needSignup + ' more</span>';
       return '<div class="status-line"><div><div class="who">' + esc(l.who) + '</div><div class="whosub">' + (l.group ? esc(l.group) + ' · ' : '') + 'owes ' + l.owed + ' · signed up ' + l.signed + (l.worked ? ' · worked ' + l.worked : '') + '</div></div>' + pill + '</div>';
     }).join('') + '</div>';
+  }
+  /* Shirt sizes: open at the top while anyone still needs one (they can't sign up until it's picked); tucked away once everyone has one. Saves on change. */
+  function shirtCard() {
+    if (!sizes().length) return '';
+    var ppl = S.fam.people || [], need = ppl.filter(function (p) { return !p.shirt; });
+    var rows = (need.length ? need : ppl).map(function (p) { return '<div class="status-line"><div><div class="who">' + esc(p.name) + '</div><div class="whosub">' + esc(p.type === 'Student' ? p.group || 'Student' : p.type) + '</div></div><select class="shsel" data-pid="' + esc(p.id) + '" style="width:auto">' + shirtOpts(p.shirt) + '</select></div>'; }).join('');
+    if (need.length) return '<div class="card"><h2>Shirt sizes</h2><p class="muted">Every volunteer gets an event shirt. Pick a size for ' + (need.length === 1 ? esc(need[0].first) : 'each person below') + ' (they can\'t sign up for a shift until it\'s picked).</p>' + rows + '</div>';
+    return '<div class="card"><details' + (S.shOpen ? ' open' : '') + ' id="shdet"><summary>Shirt sizes</summary>' + rows + '</details></div>';
   }
   function bgCard() {
     if (!S.fam.bgOn) return '';
@@ -199,6 +212,7 @@
       '<label for="ag">Student group</label><select id="ag"><option value="">(students only)</option>' + g + '</select>' +
       '<div class="whosub">A current student? Pick Student; students are exempt from background checks.</div>' +
       '<label for="aph">Cell phone (for texts; students too, if they have one)</label><input id="aph" type="tel">' +
+      (sizes().length ? '<label for="ash">Shirt size</label><select id="ash">' + shirtOpts('') + '</select>' : '') +
       '<div style="margin-top:12px"><button class="ghost" data-act="add" style="width:100%">Add to my family</button></div></details></div>';
   }
   function renderFamily() {
@@ -206,7 +220,7 @@
     var html = header(S.fam.family.name) + banner();
     if (!S.fam.open) html += '<div class="banner info">Signups aren\'t open yet. You can look around; we\'ll email when they open.</div>';
     if (S.fam.units && (S.fam.units.board || S.fam.units.track)) html += '<div class="card unitlinks"><h2>Contest day</h2><div class="row" style="flex-wrap:wrap">' + (S.fam.units.board ? '<a class="cbtn alt" href="board.html">HQ board</a>' : '') + (S.fam.units.track ? '<a class="cbtn" href="track.html">My station screen</a>' : '') + '</div><p class="muted" style="margin-bottom:0">Sign in there with Google, or use your tracker link.</p></div>';
-    html += statusCard() + bgCard() + mineCard() + calCard();
+    html += shirtCard() + statusCard() + bgCard() + mineCard() + calCard();
     if (S.day && S.day.days.length) {
       html += tabs();
       if (S.day.draft) html += '<div class="banner warn">Times are a draft until the contest schedule is final. If your shift moves, we\'ll email you.</div>';
@@ -259,9 +273,13 @@
     var d = e.target; if (!d || d.tagName !== 'DETAILS') return;
     if (d.id === 'fdet') { S.fopen = d.open; return; }
     if (d.id === 'caldet') { S.calOpen = d.open; return; }
+    if (d.id === 'shdet') { S.shOpen = d.open; return; }
     var k = d.getAttribute('data-key'); if (k) S.open[k] = d.open;
   }, true);
-  app.addEventListener('change', function (e) { if (e.target.id === 'rstu') { readRegister(); render(); return; } if (e.target.id === 'fopen') { S.onlyOpen = e.target.checked; saveView(); render(); } });
+  app.addEventListener('change', function (e) {
+    if (e.target.classList.contains('shsel') && e.target.value) { var sp = e.target.getAttribute('data-pid'), sz = e.target.value; e.target.disabled = true; S.msg = null;
+      call({ action: 'setShirt', code: S.code, personId: sp, size: sz }).then(function (r) { if (r.error) flash('err', r.error); return refresh(r.error ? '' : nameOf(sp) + ': ' + sz + ' saved.'); }); return; }
+    if (e.target.id === 'rstu') { readRegister(); render(); return; } if (e.target.id === 'fopen') { S.onlyOpen = e.target.checked; saveView(); render(); } });
   app.addEventListener('click', function (e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var act = b.getAttribute('data-act'), id = b.getAttribute('data-id');
@@ -282,7 +300,7 @@
     else if (act === 'regcancel') { S.reg = null; render(); }
     else if (act === 'register') {
       readRegister(); var r0 = S.reg; lock();
-      call({ action: 'register', email: r0.email, idToken: r0.idToken || '', first: r0.first, last: r0.last, phone: r0.phone, students: r0.kids, isStudent: r0.isStudent, group: r0.group, parent2: { first: r0.p2first, last: r0.p2last, email: r0.p2email, phone: r0.p2phone } })
+      call({ action: 'register', email: r0.email, idToken: r0.idToken || '', first: r0.first, last: r0.last, phone: r0.phone, students: r0.kids, isStudent: r0.isStudent, group: r0.group, shirt: r0.shirt, parent2: { first: r0.p2first, last: r0.p2last, email: r0.p2email, phone: r0.p2phone, shirt: r0.p2shirt } })
         .then(function (r) {
           if (r.error) { flash('err', r.error); return render(); }
           S.reg = null;
@@ -314,7 +332,7 @@
     }
     else if (act === 'add') {
       lock();
-      call({ action: 'addMember', code: S.code, first: document.getElementById('af').value, last: document.getElementById('al').value, type: document.getElementById('at').value, group: document.getElementById('ag').value, phone: document.getElementById('aph').value })
+      call({ action: 'addMember', code: S.code, first: document.getElementById('af').value, last: document.getElementById('al').value, type: document.getElementById('at').value, group: document.getElementById('ag').value, phone: document.getElementById('aph').value, shirt: (document.getElementById('ash') || {}).value || '' })
         .then(function (r) { if (r.error) flash('err', r.error); return refresh(r.error ? '' : 'Added. The coordinators will double-check it.'); });
     }
   });
