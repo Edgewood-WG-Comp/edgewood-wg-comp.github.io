@@ -6,7 +6,7 @@
   function apply() {
     var p = pref(), dark = p === 'dark' || (p === 'auto' && mq && mq.matches);
     document.documentElement.classList.toggle('dark', !!dark);
-    var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? '#120A24' : '#2E1065');
+    var m = document.querySelector('meta[name=theme-color]'); if (m) m.setAttribute('content', dark ? '#0B0B0C' : '#111113');
   }
   apply();
   if (mq && mq.addEventListener) mq.addEventListener('change', apply);

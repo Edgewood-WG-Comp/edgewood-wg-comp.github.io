@@ -6,14 +6,14 @@
   // Each prop is drawn around its spin point (0,0) in a 100×100 box. Original drawings.
   var PROPS = {
     // Spins clockwise, so the silk is drawn on the left of the pole: it trails the pole like a real spin (Nov 25, guard director)
-    flag: '<g transform="scale(-.8,.8)"><rect x="-3" y="-44" width="6" height="88" rx="3" fill="#C9C3D9"/><circle cx="0" cy="44" r="4" fill="#9A93B0"/><circle cx="0" cy="-44" r="4" fill="#9A93B0"/>' +
-      '<path d="M3 -42 C 22 -46, 30 -30, 44 -36 L 44 -6 C 30 0, 22 -16, 3 -12 Z" fill="#7C3AED"/><path d="M3 -27 C 22 -31, 30 -15, 44 -21 L 44 -6 C 30 0, 22 -16, 3 -12 Z" fill="#FBBF24"/></g>',
-    rifle: '<g transform="rotate(-8)"><path d="M-44 -6 L 24 -6 L 46 -3 L 46 4 L 22 4 L 15 15 L 1 15 L 6 4 L -44 4 Z" fill="#FFFFFF" stroke="#4C1D95" stroke-width="3" stroke-linejoin="round"/>' +
-      '<rect x="-32" y="-6" width="6" height="10" fill="#7C3AED"/><rect x="-8" y="-6" width="6" height="10" fill="#7C3AED"/><rect x="31" y="-5" width="5" height="9" fill="#FBBF24"/>' +
-      '<path d="M8 -6 L 8 -11 L 14 -11" fill="none" stroke="#4C1D95" stroke-width="3" stroke-linecap="round"/><path d="M-40 4 Q -12 22 18 4" fill="none" stroke="#14B8A6" stroke-width="2.5"/></g>',
+    flag: '<g transform="scale(-.8,.8)"><rect x="-3" y="-44" width="6" height="88" rx="3" fill="#D4D4D8"/><circle cx="0" cy="44" r="4" fill="#A1A1AA"/><circle cx="0" cy="-44" r="4" fill="#A1A1AA"/>' +
+      '<path d="M3 -42 C 22 -46, 30 -30, 44 -36 L 44 -6 C 30 0, 22 -16, 3 -12 Z" fill="#C8102E"/><path d="M3 -27 C 22 -31, 30 -15, 44 -21 L 44 -6 C 30 0, 22 -16, 3 -12 Z" fill="#F4F4F5"/></g>',
+    rifle: '<g transform="rotate(-8)"><path d="M-44 -6 L 24 -6 L 46 -3 L 46 4 L 22 4 L 15 15 L 1 15 L 6 4 L -44 4 Z" fill="#FFFFFF" stroke="#1B1B1E" stroke-width="3" stroke-linejoin="round"/>' +
+      '<rect x="-32" y="-6" width="6" height="10" fill="#C8102E"/><rect x="-8" y="-6" width="6" height="10" fill="#C8102E"/><rect x="31" y="-5" width="5" height="9" fill="#F4F4F5"/>' +
+      '<path d="M8 -6 L 8 -11 L 14 -11" fill="none" stroke="#1B1B1E" stroke-width="3" stroke-linecap="round"/><path d="M-40 4 Q -12 22 18 4" fill="none" stroke="#15803D" stroke-width="2.5"/></g>',
     sabre: '<g transform="rotate(10)"><path d="M-12 -2 C 6 -5, 26 -7, 46 -14 C 30 -3, 10 3, -12 3 Z" fill="#E5E7EB" stroke="#9CA3AF" stroke-width="1.5"/>' +
-      '<rect x="-16" y="-9" width="4" height="18" rx="2" fill="#FBBF24"/><rect x="-36" y="-3" width="20" height="6" rx="3" fill="#7C3AED"/>' +
-      '<path d="M-16 -8 C -28 -16, -38 -10, -38 -3" fill="none" stroke="#FBBF24" stroke-width="2.5"/><circle cx="-38" cy="0" r="3.5" fill="#FBBF24"/></g>'
+      '<rect x="-16" y="-9" width="4" height="18" rx="2" fill="#F4F4F5"/><rect x="-36" y="-3" width="20" height="6" rx="3" fill="#C8102E"/>' +
+      '<path d="M-16 -8 C -28 -16, -38 -10, -38 -3" fill="none" stroke="#F4F4F5" stroke-width="2.5"/><circle cx="-38" cy="0" r="3.5" fill="#F4F4F5"/></g>'
   };
   var NAMES = Object.keys(PROPS), last = '';
   function pick() { var n; do { n = NAMES[Math.floor(Math.random() * NAMES.length)]; } while (n === last && NAMES.length > 1); last = n; return n; }
@@ -21,13 +21,13 @@
     var n = pick();
     return '<svg class="sos-spin sos-' + n + '" width="' + size + '" height="' + size + '" viewBox="-50 -50 100 100" aria-hidden="true"><g class="sos-rot">' + PROPS[n] + '</g></svg>';
   }
-  var css = '.sos-load{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--sub,#5B5670);font-size:14px;padding:18px 0}' +
+  var css = '.sos-load{display:flex;flex-direction:column;align-items:center;gap:8px;color:var(--sub,#5F5F68);font-size:14px;padding:18px 0}' +
     '.sos-rot{transform-origin:0 0;animation:sosSpin 1.1s cubic-bezier(.45,.05,.55,.95) infinite}' +
     '.sos-flag .sos-rot{animation-duration:1.3s}.sos-sabre .sos-rot{animation-duration:.9s}' +
     '@keyframes sosSpin{from{transform:rotate(0)}to{transform:rotate(360deg)}}' +
     '.sos-flag{animation:sosToss 2.6s ease-in-out infinite}@keyframes sosToss{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}' +
     '#sos-busy{position:fixed;left:50%;bottom:18px;transform:translate(-50%,20px);opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:9999;' +
-    'background:#2E1065;color:#fff;border-radius:18px;padding:6px 16px 6px 8px;max-width:min(92vw,420px);display:flex;align-items:center;gap:8px;font:600 14px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}' +
+    'background:#111113;color:#fff;border-radius:18px;padding:6px 16px 6px 8px;max-width:min(92vw,420px);display:flex;align-items:center;gap:8px;font:600 14px system-ui,sans-serif;box-shadow:0 6px 20px rgba(0,0,0,.25)}' +
     '#sos-busy svg{flex:0 0 auto}#sos-busy.on{opacity:1;transform:translate(-50%,0)}' +
     '@media (prefers-reduced-motion:reduce){.sos-rot,.sos-flag{animation:none}}';
   function inject() {
