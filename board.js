@@ -119,7 +119,7 @@
     if (PUB) { app.innerHTML = header('') + banner() + footer(); return; }
     app.innerHTML = header('Sign in') + banner() + '<div class="card"><h2>' + (MODE === 'track' ? 'Station screens' : 'HQ board') + '</h2><p class="muted">Volunteers: sign in on the <a href="./">volunteer page</a> first, then come back. Coordinators: sign in with your Google account.</p>' + (gid ? '<div id="gbtn" style="display:flex;justify-content:center;min-height:44px"></div>' : '') + '</div>' + footer();
     if (!gid) return;
-    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, callback: function (r) { S.token = r.credential; put(P + 'sosAdminTok', S.token, true); load(); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); };
+    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, use_fedcm_for_prompt: true, use_fedcm_for_button: true, button_auto_select: true, callback: function (r) { S.token = r.credential; put(P + 'sosAdminTok', S.token, true); load(); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); };
     if (window.google && google.accounts) draw(); else { var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = draw; document.head.appendChild(sc); }
   }
 

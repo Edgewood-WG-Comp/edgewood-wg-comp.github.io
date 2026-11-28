@@ -54,6 +54,8 @@
       start();
     });
   }
+  // Nov 27 (Nick): the button goes through the browser's FedCM sign-in too. Chrome only signs someone in automatically after a
+  // FedCM sign-in on that browser; the old pop-up button never counted, so automatic admin sign-in never kicked in on phones.
   function renderSignIn() {
     var gid = (S.cfg && S.cfg.googleClientId) || C.GOOGLE_CLIENT_ID;
     app.innerHTML = header() + banner() + '<div class="card"><h2>Admin sign-in</h2><p class="muted">Sign in with a Google account listed on the sheet\'s Lists tab.</p>' +
@@ -62,7 +64,7 @@
     // Nov 22 (Nick): automatic sign-in on a device that has signed in as admin before (and didn't press Sign out). Google still verifies
     // the account and the server still checks the Lists tab. Not after a refusal in this tab, so a non-admin account can't loop.
     var auto = false; try { auto = localStorage.getItem('sosAdminSeen') === '1' && localStorage.getItem('sosAdminOut') !== '1' && !getS('sosAutoNo'); } catch (e) {}
-    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, auto_select: auto, use_fedcm_for_prompt: true, callback: function (r) { swapForSession(r.credential); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); if (auto) { try { google.accounts.id.prompt(); } catch (e) {} } };
+    var draw = function () { var el = document.getElementById('gbtn'); if (!el) return; google.accounts.id.initialize({ client_id: gid, auto_select: auto, use_fedcm_for_prompt: true, use_fedcm_for_button: true, button_auto_select: true, callback: function (r) { swapForSession(r.credential); } }); google.accounts.id.renderButton(el, { theme: 'outline', size: 'large', text: 'signin_with', shape: 'pill', width: 280 }); if (auto) { try { google.accounts.id.prompt(); } catch (e) {} } };
     if (window.google && google.accounts) draw(); else { var sc = document.createElement('script'); sc.src = 'https://accounts.google.com/gsi/client'; sc.async = true; sc.onload = draw; document.head.appendChild(sc); }
   }
 
